@@ -1,32 +1,26 @@
 const axios = require('axios');
-const { exec } = require('child_process');
 
-const VPS_IP = process.env.VPS_IP;
-const IPTV_SERVER = process.env.IPTV_SERVER;
-const IPTV_USER = process.env.IPTV_USER;
-const IPTV_PASS = process.env.IPTV_PASS;
-
-// Note: Untuk production, lo perlu SSH connection ke VPS
-// Untuk sekarang, kita return URL aja
+const VPS_IP = process.env.VPS_IP || '173.249.27.15';
+const VPS_API_URL = process.env.VPS_API_URL || 'http://173.249.27.15:3001';
+const VPS_API_KEY = process.env.VPS_API_KEY || 'sportmeriah-secret-key-2026';
 
 // Start stream
 exports.startStream = async (req, res) => {
     try {
-        const { streamId, name } = req.params;
+        const { id } = req.params;
 
-        // Stream URL dari IPTV
-        const sourceUrl = `${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${streamId}.ts`;
-
-        // Output URL (HLS)
-        const outputUrl = `http://${VPS_IP}/hls/${name}.m3u8`;
+        const response = await axios.get(`${VPS_API_URL}/stream/start/${id}`, {
+            headers: { 'x-api-key': VPS_API_KEY },
+            timeout: 10000
+        });
 
         res.json({
             success: true,
-            message: `Stream ${name} started`,
-            stream_url: outputUrl,
-            source: sourceUrl
+            message: response.data.message,
+            stream_url: `http://${VPS_IP}/hls/${id}.m3u8`
         });
     } catch (error) {
+        console.error('Start stream error:', error.message);
         res.status(500).json({ error: 'Failed to start stream' });
     }
 };
@@ -34,25 +28,67 @@ exports.startStream = async (req, res) => {
 // Stop stream
 exports.stopStream = async (req, res) => {
     try {
-        const { name } = req.params;
+        const { id } = req.params;
+
+        const response = await axios.get(`${VPS_API_URL}/stream/stop/${id}`, {
+            headers: { 'x-api-key': VPS_API_KEY },
+            timeout: 10000
+        });
 
         res.json({
             success: true,
-            message: `Stream ${name} stopped`
+            message: response.data.message
         });
     } catch (error) {
+        console.error('Stop stream error:', error.message);
         res.status(500).json({ error: 'Failed to stop stream' });
     }
 };
 
-// Get stream status
+// Get all streams status
 exports.getStatus = async (req, res) => {
     try {
+        const response = await axios.get(`${VPS_API_URL}/stream/status`, {
+            headers: { 'x-api-key': VPS_API_KEY },
+            timeout: 10000
+        });
+
         res.json({
             vps_ip: VPS_IP,
-            status: 'online'
+            status: 'online',
+            running_streams: response.data.running_streams || []
         });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to get status' });
+        console.error('Get status error:', error.message);
+        res.json({
+            vps_ip: VPS_IP,
+            status: 'offline',
+            running_streams: []
+        });
+    }
+};
+
+// Get specific stream status
+exports.getStreamStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const response = await axios.get(`${VPS_API_URL}/stream/status/${id}`, {
+            headers: { 'x-api-key': VPS_API_KEY },
+            timeout: 10000
+        });
+
+        res.json({
+            stream_id: id,
+            is_running: response.data.is_running,
+            stream_url: response.data.is_running ? `http://${VPS_IP}/hls/${id}.m3u8` : null
+        });
+    } catch (error) {
+        console.error('Get stream status error:', error.message);
+        res.json({
+            stream_id: id,
+            is_running: false,
+            stream_url: null
+        });
     }
 };
