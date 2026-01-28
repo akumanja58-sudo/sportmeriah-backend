@@ -43,25 +43,90 @@ async function fetchIPTVChannels() {
 function findIPTVStream(homeTeam, awayTeam, iptvChannels) {
     if (!iptvChannels || !iptvChannels.length) return null;
 
-    const homeWords = homeTeam.toLowerCase().split(' ').filter(w => w.length >= 3);
-    const awayWords = awayTeam.toLowerCase().split(' ').filter(w => w.length >= 3);
+    // Clean team names - remove common suffixes
+    const cleanTeamName = (name) => {
+        return name
+            .toLowerCase()
+            .replace(/\s*(fc|sc|cf|united|city|utd|sporting|athletic|club|academy)\.?$/i, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+    };
+
+    const homeClean = cleanTeamName(homeTeam);
+    const awayClean = cleanTeamName(awayTeam);
+
+    // Get significant words (min 3 chars, exclude common words)
+    const commonWords = ['the', 'and', 'united', 'city', 'real', 'athletic', 'sporting', 'club', 'football'];
+    const getSignificantWords = (name) => {
+        return name.split(' ')
+            .filter(w => w.length >= 3 && !commonWords.includes(w));
+    };
+
+    const homeWords = getSignificantWords(homeClean);
+    const awayWords = getSignificantWords(awayClean);
+
+    // Need at least 1 significant word from each team
+    if (homeWords.length === 0 || awayWords.length === 0) {
+        // Fallback: use full name
+        if (homeClean.length >= 3) homeWords.push(homeClean);
+        if (awayClean.length >= 3) awayWords.push(awayClean);
+    }
+
+    let bestMatch = null;
+    let bestScore = 0;
 
     for (const channel of iptvChannels) {
         const channelName = channel.name.toLowerCase();
 
-        // Check if channel contains both team names (partial match)
-        const hasHome = homeWords.some(word => channelName.includes(word));
-        const hasAway = awayWords.some(word => channelName.includes(word));
+        // Skip if channel doesn't contain "vs" (not a match channel)
+        if (!channelName.includes(' vs ')) continue;
 
-        if (hasHome && hasAway) {
-            return {
+        // Extract team names from channel (format: "... : TeamA vs TeamB @ ...")
+        const vsMatch = channelName.match(/:\s*(.+?)\s+vs\s+(.+?)\s*@/i);
+        if (!vsMatch) continue;
+
+        const channelHome = cleanTeamName(vsMatch[1]);
+        const channelAway = cleanTeamName(vsMatch[2]);
+
+        // Calculate match score
+        let score = 0;
+
+        // Check home team match
+        const homeMatchesChannelHome = homeWords.some(word => channelHome.includes(word));
+        const homeMatchesChannelAway = homeWords.some(word => channelAway.includes(word));
+
+        // Check away team match
+        const awayMatchesChannelHome = awayWords.some(word => channelHome.includes(word));
+        const awayMatchesChannelAway = awayWords.some(word => channelAway.includes(word));
+
+        // Best case: home matches channelHome AND away matches channelAway
+        if (homeMatchesChannelHome && awayMatchesChannelAway) {
+            score = 10;
+        }
+        // Also good: home matches channelAway AND away matches channelHome (reversed)
+        else if (homeMatchesChannelAway && awayMatchesChannelHome) {
+            score = 10;
+        }
+        // Partial match: both teams found but in wrong positions
+        else if ((homeMatchesChannelHome || homeMatchesChannelAway) &&
+            (awayMatchesChannelHome || awayMatchesChannelAway)) {
+            score = 5;
+        }
+
+        // Only accept score >= 5 (both teams must match)
+        if (score > bestScore) {
+            bestScore = score;
+            bestMatch = {
                 stream_id: channel.stream_id,
                 channel_name: channel.name
             };
         }
+
+        // Perfect match found, no need to continue
+        if (bestScore >= 10) break;
     }
 
-    return null;
+    return bestMatch;
 }
 
 // ========== GET TODAY'S FIXTURES ==========
