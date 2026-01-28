@@ -19,19 +19,19 @@ let iptvCache = {
 // ========== FETCH IPTV CHANNELS ==========
 async function fetchIPTVChannels() {
     const now = Date.now();
-    
+
     // Return cached if valid
     if (iptvCache.data && iptvCache.lastFetch && (now - iptvCache.lastFetch < iptvCache.ttl)) {
         return iptvCache.data;
     }
-    
+
     try {
         const url = `${IPTV_BASE_URL}/player_api.php?username=${IPTV_USERNAME}&password=${IPTV_PASSWORD}&action=get_live_streams&category_id=171`;
         const res = await axios.get(url, { timeout: 10000 });
-        
+
         iptvCache.data = res.data || [];
         iptvCache.lastFetch = now;
-        
+
         return iptvCache.data;
     } catch (error) {
         console.error('Failed to fetch IPTV channels:', error.message);
@@ -42,17 +42,17 @@ async function fetchIPTVChannels() {
 // ========== MATCH TEAM NAME WITH IPTV ==========
 function findIPTVStream(homeTeam, awayTeam, iptvChannels) {
     if (!iptvChannels || !iptvChannels.length) return null;
-    
+
     const homeWords = homeTeam.toLowerCase().split(' ').filter(w => w.length >= 3);
     const awayWords = awayTeam.toLowerCase().split(' ').filter(w => w.length >= 3);
-    
+
     for (const channel of iptvChannels) {
         const channelName = channel.name.toLowerCase();
-        
+
         // Check if channel contains both team names (partial match)
         const hasHome = homeWords.some(word => channelName.includes(word));
         const hasAway = awayWords.some(word => channelName.includes(word));
-        
+
         if (hasHome && hasAway) {
             return {
                 stream_id: channel.stream_id,
@@ -60,44 +60,67 @@ function findIPTVStream(homeTeam, awayTeam, iptvChannels) {
             };
         }
     }
-    
+
     return null;
 }
 
 // ========== GET TODAY'S FIXTURES ==========
 exports.getTodayFixtures = async (req, res) => {
     try {
-        // Get today's date in YYYY-MM-DD format
-        const today = new Date().toISOString().split('T')[0];
-        
-        // Fetch from API-Football
-        const response = await axios.get(`${API_FOOTBALL_URL}/fixtures`, {
-            headers: {
-                'x-rapidapi-key': API_FOOTBALL_KEY,
-                'x-rapidapi-host': 'v3.football.api-sports.io'
-            },
-            params: {
-                date: today,
-                timezone: 'Asia/Jakarta'
-            }
-        });
-        
-        if (!response.data || !response.data.response) {
+        // Get today and tomorrow dates in YYYY-MM-DD format (timezone Jakarta)
+        const now = new Date();
+        const jakartaOffset = 7 * 60 * 60 * 1000; // UTC+7
+        const jakartaNow = new Date(now.getTime() + jakartaOffset);
+
+        const today = jakartaNow.toISOString().split('T')[0];
+        const tomorrow = new Date(jakartaNow.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+        // Fetch from API-Football - both today and tomorrow
+        const [todayResponse, tomorrowResponse] = await Promise.all([
+            axios.get(`${API_FOOTBALL_URL}/fixtures`, {
+                headers: {
+                    'x-rapidapi-key': API_FOOTBALL_KEY,
+                    'x-rapidapi-host': 'v3.football.api-sports.io'
+                },
+                params: {
+                    date: today,
+                    timezone: 'Asia/Jakarta'
+                }
+            }),
+            axios.get(`${API_FOOTBALL_URL}/fixtures`, {
+                headers: {
+                    'x-rapidapi-key': API_FOOTBALL_KEY,
+                    'x-rapidapi-host': 'v3.football.api-sports.io'
+                },
+                params: {
+                    date: tomorrow,
+                    timezone: 'Asia/Jakarta'
+                }
+            })
+        ]);
+
+        // Combine results
+        const allFixtures = [
+            ...(todayResponse.data?.response || []),
+            ...(tomorrowResponse.data?.response || [])
+        ];
+
+        if (!allFixtures.length) {
             return res.json({ success: true, fixtures: [] });
         }
-        
+
         // Fetch IPTV channels
         const iptvChannels = await fetchIPTVChannels();
-        
+
         // Process fixtures
-        const fixtures = response.data.response
+        const fixtures = allFixtures
             .map(fixture => {
                 const homeTeam = fixture.teams.home.name;
                 const awayTeam = fixture.teams.away.name;
-                
+
                 // Find matching IPTV stream
                 const iptvStream = findIPTVStream(homeTeam, awayTeam, iptvChannels);
-                
+
                 return {
                     id: fixture.fixture.id,
                     date: fixture.fixture.date,
@@ -135,13 +158,13 @@ exports.getTodayFixtures = async (req, res) => {
             .filter(f => {
                 // Always show if has IPTV stream
                 if (f.stream) return true;
-                
+
                 // Show popular leagues even without stream (for display)
                 const popularLeagues = [
                     'Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1',
                     'Champions League', 'Europa League', 'World Cup', 'Euro'
                 ];
-                return popularLeagues.some(league => 
+                return popularLeagues.some(league =>
                     f.league.name.toLowerCase().includes(league.toLowerCase())
                 );
             })
@@ -150,20 +173,24 @@ exports.getTodayFixtures = async (req, res) => {
                 const liveStatuses = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE'];
                 const aIsLive = liveStatuses.includes(a.status.short);
                 const bIsLive = liveStatuses.includes(b.status.short);
-                
+
                 if (aIsLive && !bIsLive) return -1;
                 if (!aIsLive && bIsLive) return 1;
-                
+
                 return a.timestamp - b.timestamp;
-            });
-        
+            })
+            // Remove duplicates (in case same match appears in both days)
+            .filter((fixture, index, self) =>
+                index === self.findIndex(f => f.id === fixture.id)
+            );
+
         res.json({
             success: true,
             date: today,
             count: fixtures.length,
             fixtures
         });
-        
+
     } catch (error) {
         console.error('Failed to fetch fixtures:', error.message);
         res.status(500).json({
@@ -187,20 +214,20 @@ exports.getLiveFixtures = async (req, res) => {
                 timezone: 'Asia/Jakarta'
             }
         });
-        
+
         if (!response.data || !response.data.response) {
             return res.json({ success: true, fixtures: [] });
         }
-        
+
         // Fetch IPTV channels
         const iptvChannels = await fetchIPTVChannels();
-        
+
         // Process fixtures
         const fixtures = response.data.response.map(fixture => {
             const homeTeam = fixture.teams.home.name;
             const awayTeam = fixture.teams.away.name;
             const iptvStream = findIPTVStream(homeTeam, awayTeam, iptvChannels);
-            
+
             return {
                 id: fixture.fixture.id,
                 date: fixture.fixture.date,
@@ -233,13 +260,13 @@ exports.getLiveFixtures = async (req, res) => {
                 stream: iptvStream
             };
         });
-        
+
         res.json({
             success: true,
             count: fixtures.length,
             fixtures
         });
-        
+
     } catch (error) {
         console.error('Failed to fetch live fixtures:', error.message);
         res.status(500).json({
@@ -253,7 +280,7 @@ exports.getLiveFixtures = async (req, res) => {
 exports.getFixtureById = async (req, res) => {
     try {
         const { id } = req.params;
-        
+
         const response = await axios.get(`${API_FOOTBALL_URL}/fixtures`, {
             headers: {
                 'x-rapidapi-key': API_FOOTBALL_KEY,
@@ -264,22 +291,22 @@ exports.getFixtureById = async (req, res) => {
                 timezone: 'Asia/Jakarta'
             }
         });
-        
+
         if (!response.data || !response.data.response || !response.data.response[0]) {
             return res.status(404).json({
                 success: false,
                 error: 'Fixture not found'
             });
         }
-        
+
         const fixture = response.data.response[0];
         const homeTeam = fixture.teams.home.name;
         const awayTeam = fixture.teams.away.name;
-        
+
         // Fetch IPTV channels and find stream
         const iptvChannels = await fetchIPTVChannels();
         const iptvStream = findIPTVStream(homeTeam, awayTeam, iptvChannels);
-        
+
         res.json({
             success: true,
             fixture: {
@@ -319,7 +346,7 @@ exports.getFixtureById = async (req, res) => {
                 stream: iptvStream
             }
         });
-        
+
     } catch (error) {
         console.error('Failed to fetch fixture:', error.message);
         res.status(500).json({
