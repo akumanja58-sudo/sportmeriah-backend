@@ -5,6 +5,7 @@ require('dotenv').config();
 const matchesRoutes = require('./routes/matches');
 const streamsRoutes = require('./routes/streams');
 const footballRoutes = require('./routes/football');
+const fixturesRoutes = require('./routes/fixtures');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use('/api/matches', matchesRoutes);
 app.use('/api/streams', streamsRoutes);
 app.use('/api/football', footballRoutes);
+app.use('/api/fixtures', fixturesRoutes);
 
 // Health check
 app.get('/', (req, res) => {
