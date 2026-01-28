@@ -154,7 +154,30 @@ exports.getTodayFixtures = async (req, res) => {
                     stream: iptvStream
                 };
             })
-            // Filter: only show matches with IPTV stream OR popular leagues
+            // Filter 1: Hide matches that already passed (except LIVE)
+            .filter(f => {
+                const now = Date.now();
+                const kickoff = f.timestamp * 1000; // Convert to milliseconds
+                const liveStatuses = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT'];
+                const finishedStatuses = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+
+                const isLive = liveStatuses.includes(f.status.short);
+                const isFinished = finishedStatuses.includes(f.status.short);
+                const isUpcoming = f.status.short === 'NS';
+
+                // Always show if LIVE
+                if (isLive) return true;
+
+                // Hide if finished
+                if (isFinished) return false;
+
+                // Show if Upcoming AND kickoff belum lewat
+                if (isUpcoming && kickoff > now) return true;
+
+                // Hide everything else (NS but already passed)
+                return false;
+            })
+            // Filter 2: only show matches with IPTV stream OR popular leagues
             .filter(f => {
                 // Always show if has IPTV stream
                 if (f.stream) return true;
