@@ -242,20 +242,8 @@ exports.getTodayFixtures = async (req, res) => {
                 // Hide everything else (NS but already passed)
                 return false;
             })
-            // Filter 2: only show matches with IPTV stream OR popular leagues
-            .filter(f => {
-                // Always show if has IPTV stream
-                if (f.stream) return true;
-
-                // Show popular leagues even without stream (for display)
-                const popularLeagues = [
-                    'Premier League', 'La Liga', 'Serie A', 'Bundesliga', 'Ligue 1',
-                    'Champions League', 'Europa League', 'World Cup', 'Euro'
-                ];
-                return popularLeagues.some(league =>
-                    f.league.name.toLowerCase().includes(league.toLowerCase())
-                );
-            })
+            // Filter 2: ONLY show matches with IPTV stream
+            .filter(f => f.stream !== null)
             // Sort by status (LIVE first) then by time
             .sort((a, b) => {
                 const liveStatuses = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE'];
