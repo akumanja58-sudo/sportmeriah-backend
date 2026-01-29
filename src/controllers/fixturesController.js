@@ -18,7 +18,6 @@ const IPTV_FOOTBALL_CATEGORIES = [
 ];
 
 // ========== TEAM NAME ALIASES ==========
-// Format: 'alias' => ['possible', 'names', 'in', 'api']
 const TEAM_ALIASES = {
     // Romanian
     'fcsb': ['steaua bucuresti', 'fcsb', 'steaua'],
@@ -70,17 +69,22 @@ const TEAM_ALIASES = {
 
     // Hungarian
     'ferencvaros': ['ferencvarosi tc', 'ferencvaros', 'ferencváros', 'fradi'],
+    'ferencvarosi': ['ferencvarosi tc', 'ferencvaros', 'ferencváros', 'fradi'],
 
     // Scottish
     'celtic': ['celtic fc', 'celtic glasgow', 'celtic'],
     'rangers': ['rangers fc', 'glasgow rangers', 'rangers'],
 
     // English
-    'nottingham forest': ['nottingham forest', 'nott\'m forest', 'forest'],
+    'nottingham forest': ['nottingham forest', 'nottm forest', 'forest'],
+    'nottingham': ['nottingham forest', 'nottm forest'],
     'man united': ['manchester united', 'man utd', 'man united'],
+    'manchester united': ['manchester united', 'man utd', 'man united'],
     'man city': ['manchester city', 'man city'],
+    'manchester city': ['manchester city', 'man city'],
     'tottenham': ['tottenham hotspur', 'tottenham', 'spurs'],
     'spurs': ['tottenham hotspur', 'tottenham', 'spurs'],
+    'aston villa': ['aston villa', 'villa'],
 
     // Spanish
     'atletico madrid': ['atletico madrid', 'atlético madrid', 'atletico', 'atleti'],
@@ -88,6 +92,7 @@ const TEAM_ALIASES = {
     'real sociedad': ['real sociedad', 'la real', 'sociedad'],
     'real betis': ['real betis', 'betis'],
     'rayo vallecano': ['rayo vallecano', 'rayo'],
+    'celta vigo': ['celta vigo', 'celta', 'rc celta'],
 
     // Italian
     'inter': ['inter milan', 'internazionale', 'inter'],
@@ -99,6 +104,7 @@ const TEAM_ALIASES = {
     'lazio': ['ss lazio', 'lazio'],
     'fiorentina': ['acf fiorentina', 'fiorentina', 'viola'],
     'juventus': ['juventus fc', 'juventus', 'juve'],
+    'bologna': ['bologna fc', 'bologna'],
 
     // Portuguese
     'sporting': ['sporting cp', 'sporting lisbon', 'sporting'],
@@ -179,6 +185,25 @@ const TEAM_ALIASES = {
     'sk slovan': ['slovan bratislava', 'sk slovan bratislava', 'slovan'],
 };
 
+// Words that should NOT be used for partial matching (too common/short)
+const BLOCKED_PARTIAL_WORDS = [
+    'united', 'city', 'fc', 'sc', 'ac', 'as', 'ss', 'sk', 'fk', 'nk', 'real',
+    'sporting', 'athletic', 'club', 'sport', 'de', 'la', 'le', 'el', 'al',
+    'san', 'santa', 'st', 'new', 'old', 'north', 'south', 'east', 'west',
+    'dynamo', 'dinamo', 'rapid', 'racing', 'victoria', 'viktoria', 'olympique',
+    'olimpia', 'nacional', 'internacional', 'universal', 'royal', 'standard'
+];
+
+// Pairs that should NEVER match (to prevent false positives)
+const BLOCKED_PAIRS = [
+    ['lille', 'lillestrom'],
+    ['atlanta', 'aston'],
+    ['atlanta', 'villa'],
+    ['sporting', 'sport'],
+    ['city', 'city'],  // prevent Man City U21 matching with random city teams
+    ['united', 'united'],
+];
+
 // Cache for IPTV channels
 let iptvCache = {
     data: null,
@@ -190,13 +215,11 @@ let iptvCache = {
 async function fetchIPTVChannels() {
     const now = Date.now();
 
-    // Return cached if valid
     if (iptvCache.data && iptvCache.lastFetch && (now - iptvCache.lastFetch < iptvCache.ttl)) {
         return iptvCache.data;
     }
 
     try {
-        // Fetch from multiple categories in parallel
         const fetchPromises = IPTV_FOOTBALL_CATEGORIES.map(categoryId => {
             const url = `${IPTV_BASE_URL}/player_api.php?username=${IPTV_USERNAME}&password=${IPTV_PASSWORD}&action=get_live_streams&category_id=${categoryId}`;
             return axios.get(url, { timeout: 10000 }).catch(err => {
@@ -207,7 +230,6 @@ async function fetchIPTVChannels() {
 
         const responses = await Promise.all(fetchPromises);
 
-        // Combine all channels from all categories
         let allChannels = [];
         responses.forEach(res => {
             if (res.data && Array.isArray(res.data)) {
@@ -215,7 +237,6 @@ async function fetchIPTVChannels() {
             }
         });
 
-        // Remove duplicates by stream_id
         const uniqueChannels = allChannels.filter((channel, index, self) =>
             index === self.findIndex(c => c.stream_id === channel.stream_id)
         );
@@ -236,75 +257,107 @@ async function fetchIPTVChannels() {
 function normalizeTeamName(name) {
     return name
         .toLowerCase()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
-        .replace(/[''`]/g, '') // Remove apostrophes
-        .replace(/\s*(fc|sc|cf|ac|as|ss|sk|fk|nk|krc|rsc|ogc|losc|gnk|pfc|bsc|vfb|fsv|ssc|acf|sl|rc)\.?\s*/gi, ' ') // Remove common prefixes/suffixes
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[''`]/g, '')
+        .replace(/\s*(fc|sc|cf|ac|as|ss|sk|fk|nk|krc|rsc|ogc|losc|gnk|pfc|bsc|vfb|fsv|ssc|acf|sl|rc)\.?\s*/gi, ' ')
         .replace(/\s*(united|city|utd|sporting|athletic|club|academy|hotspur|wanderers|rovers)\.?\s*/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim();
 }
 
-// ========== GET TEAM ALIASES ==========
-function getTeamAliases(teamName) {
-    const normalized = normalizeTeamName(teamName);
-    const aliases = new Set([normalized, teamName.toLowerCase()]);
+// ========== CHECK IF PAIR IS BLOCKED ==========
+function isPairBlocked(word1, word2) {
+    const w1 = word1.toLowerCase();
+    const w2 = word2.toLowerCase();
 
-    // Check if team has predefined aliases
+    for (const [blocked1, blocked2] of BLOCKED_PAIRS) {
+        if ((w1.includes(blocked1) && w2.includes(blocked2)) ||
+            (w1.includes(blocked2) && w2.includes(blocked1))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// ========== GET TEAM KEYWORDS ==========
+function getTeamKeywords(teamName) {
+    const normalized = normalizeTeamName(teamName);
+    const keywords = new Set();
+
+    // Add full normalized name
+    keywords.add(normalized);
+
+    // Check predefined aliases
     for (const [key, values] of Object.entries(TEAM_ALIASES)) {
-        if (normalized.includes(key) || key.includes(normalized) || teamName.toLowerCase().includes(key)) {
-            values.forEach(v => aliases.add(normalizeTeamName(v)));
+        const keyNorm = normalizeTeamName(key);
+        if (normalized.includes(keyNorm) || keyNorm.includes(normalized) ||
+            teamName.toLowerCase().includes(key)) {
+            values.forEach(v => keywords.add(normalizeTeamName(v)));
         }
     }
 
-    // Add individual words as potential matches (min 4 chars)
+    // Add individual words (min 5 chars, not blocked)
     normalized.split(' ').forEach(word => {
-        if (word.length >= 4) {
-            aliases.add(word);
+        if (word.length >= 5 && !BLOCKED_PARTIAL_WORDS.includes(word)) {
+            keywords.add(word);
         }
     });
 
-    return Array.from(aliases);
+    // Also add original team name words (min 5 chars)
+    teamName.toLowerCase().split(/\s+/).forEach(word => {
+        const clean = word.replace(/[^a-z]/g, '');
+        if (clean.length >= 5 && !BLOCKED_PARTIAL_WORDS.includes(clean)) {
+            keywords.add(clean);
+        }
+    });
+
+    return Array.from(keywords);
 }
 
-// ========== FUZZY MATCH SCORE ==========
-function fuzzyMatchScore(str1, str2) {
-    const s1 = str1.toLowerCase();
-    const s2 = str2.toLowerCase();
+// ========== CALCULATE MATCH SCORE ==========
+function calculateMatchScore(keywords1, keywords2) {
+    let bestScore = 0;
 
-    // Exact match
-    if (s1 === s2) return 100;
+    for (const kw1 of keywords1) {
+        for (const kw2 of keywords2) {
+            // Skip if pair is blocked
+            if (isPairBlocked(kw1, kw2)) continue;
 
-    // One contains the other
-    if (s1.includes(s2) || s2.includes(s1)) return 90;
+            let score = 0;
 
-    // Check word overlap
-    const words1 = s1.split(' ').filter(w => w.length >= 3);
-    const words2 = s2.split(' ').filter(w => w.length >= 3);
-
-    let matchedWords = 0;
-    for (const w1 of words1) {
-        for (const w2 of words2) {
-            if (w1 === w2 || w1.includes(w2) || w2.includes(w1)) {
-                matchedWords++;
-                break;
+            // Exact match
+            if (kw1 === kw2) {
+                score = 100;
             }
+            // One contains the other (only if both are 5+ chars)
+            else if (kw1.length >= 5 && kw2.length >= 5) {
+                if (kw1.includes(kw2) || kw2.includes(kw1)) {
+                    // Make sure it's a significant match (>70% overlap)
+                    const shorter = kw1.length < kw2.length ? kw1 : kw2;
+                    const longer = kw1.length >= kw2.length ? kw1 : kw2;
+                    const overlap = shorter.length / longer.length;
+
+                    if (overlap >= 0.7) {
+                        score = 85;
+                    }
+                }
+            }
+
+            bestScore = Math.max(bestScore, score);
+            if (bestScore >= 100) break;
         }
+        if (bestScore >= 100) break;
     }
 
-    if (matchedWords > 0) {
-        return 50 + (matchedWords / Math.max(words1.length, words2.length)) * 40;
-    }
-
-    return 0;
+    return bestScore;
 }
 
 // ========== MATCH TEAM NAME WITH IPTV ==========
 function findIPTVStream(homeTeam, awayTeam, iptvChannels) {
     if (!iptvChannels || !iptvChannels.length) return null;
 
-    // Get all possible aliases for both teams
-    const homeAliases = getTeamAliases(homeTeam);
-    const awayAliases = getTeamAliases(awayTeam);
+    const homeKeywords = getTeamKeywords(homeTeam);
+    const awayKeywords = getTeamKeywords(awayTeam);
 
     let bestMatch = null;
     let bestScore = 0;
@@ -312,10 +365,10 @@ function findIPTVStream(homeTeam, awayTeam, iptvChannels) {
     for (const channel of iptvChannels) {
         const channelName = channel.name.toLowerCase();
 
-        // Skip header channels (starts with #)
+        // Skip header channels
         if (channelName.startsWith('#')) continue;
 
-        // Extract team names from channel - multiple formats
+        // Extract team names from channel
         let channelHome = '';
         let channelAway = '';
 
@@ -344,96 +397,58 @@ function findIPTVStream(homeTeam, awayTeam, iptvChannels) {
 
         if (!channelHome || !channelAway) continue;
 
-        // Normalize channel team names
-        const channelHomeNorm = normalizeTeamName(channelHome);
-        const channelAwayNorm = normalizeTeamName(channelAway);
-        const channelHomeAliases = getTeamAliases(channelHome);
-        const channelAwayAliases = getTeamAliases(channelAway);
+        const channelHomeKeywords = getTeamKeywords(channelHome);
+        const channelAwayKeywords = getTeamKeywords(channelAway);
 
-        // Calculate match scores for both possible orderings
-        let homeToHomeScore = 0;
-        let awayToAwayScore = 0;
-        let homeToAwayScore = 0;
-        let awayToHomeScore = 0;
+        // Calculate scores for normal order (home-home, away-away)
+        const homeToHomeScore = calculateMatchScore(homeKeywords, channelHomeKeywords);
+        const awayToAwayScore = calculateMatchScore(awayKeywords, channelAwayKeywords);
 
-        // Check home team against channel home
-        for (const ha of homeAliases) {
-            for (const cha of channelHomeAliases) {
-                const score = fuzzyMatchScore(ha, cha);
-                homeToHomeScore = Math.max(homeToHomeScore, score);
+        // Calculate scores for reversed order (home-away, away-home)
+        const homeToAwayScore = calculateMatchScore(homeKeywords, channelAwayKeywords);
+        const awayToHomeScore = calculateMatchScore(awayKeywords, channelHomeKeywords);
+
+        // Check normal order
+        if (homeToHomeScore >= 85 && awayToAwayScore >= 85) {
+            const totalScore = (homeToHomeScore + awayToAwayScore) / 2;
+            if (totalScore > bestScore) {
+                bestScore = totalScore;
+                bestMatch = {
+                    stream_id: channel.stream_id,
+                    channel_name: channel.name
+                };
             }
         }
 
-        // Check away team against channel away
-        for (const aa of awayAliases) {
-            for (const caa of channelAwayAliases) {
-                const score = fuzzyMatchScore(aa, caa);
-                awayToAwayScore = Math.max(awayToAwayScore, score);
+        // Check reversed order
+        if (homeToAwayScore >= 85 && awayToHomeScore >= 85) {
+            const totalScore = (homeToAwayScore + awayToHomeScore) / 2;
+            if (totalScore > bestScore) {
+                bestScore = totalScore;
+                bestMatch = {
+                    stream_id: channel.stream_id,
+                    channel_name: channel.name
+                };
             }
-        }
-
-        // Check reversed (home vs channel away, away vs channel home)
-        for (const ha of homeAliases) {
-            for (const caa of channelAwayAliases) {
-                const score = fuzzyMatchScore(ha, caa);
-                homeToAwayScore = Math.max(homeToAwayScore, score);
-            }
-        }
-
-        for (const aa of awayAliases) {
-            for (const cha of channelHomeAliases) {
-                const score = fuzzyMatchScore(aa, cha);
-                awayToHomeScore = Math.max(awayToHomeScore, score);
-            }
-        }
-
-        // Calculate total score (best of normal or reversed order)
-        const normalScore = (homeToHomeScore + awayToAwayScore) / 2;
-        const reversedScore = (homeToAwayScore + awayToHomeScore) / 2;
-        const totalScore = Math.max(normalScore, reversedScore);
-
-        // Only accept if both teams have reasonable match (>= 50 each)
-        const minTeamScore = Math.min(
-            Math.max(homeToHomeScore, homeToAwayScore),
-            Math.max(awayToAwayScore, awayToHomeScore)
-        );
-
-        if (totalScore > bestScore && minTeamScore >= 50) {
-            bestScore = totalScore;
-            bestMatch = {
-                stream_id: channel.stream_id,
-                channel_name: channel.name,
-                match_score: totalScore
-            };
         }
 
         // Perfect match found
-        if (bestScore >= 95) break;
+        if (bestScore >= 100) break;
     }
 
-    // Return match if score is good enough (>= 60)
-    if (bestMatch && bestScore >= 60) {
-        return {
-            stream_id: bestMatch.stream_id,
-            channel_name: bestMatch.channel_name
-        };
-    }
-
-    return null;
+    return bestMatch;
 }
 
 // ========== GET TODAY'S FIXTURES ==========
 exports.getTodayFixtures = async (req, res) => {
     try {
-        // Get today and tomorrow dates in YYYY-MM-DD format (timezone Jakarta)
         const now = new Date();
-        const jakartaOffset = 7 * 60 * 60 * 1000; // UTC+7
+        const jakartaOffset = 7 * 60 * 60 * 1000;
         const jakartaNow = new Date(now.getTime() + jakartaOffset);
 
         const today = jakartaNow.toISOString().split('T')[0];
         const tomorrow = new Date(jakartaNow.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-        // Fetch from API-Football - both today and tomorrow
         const [todayResponse, tomorrowResponse] = await Promise.all([
             axios.get(`${API_FOOTBALL_URL}/fixtures`, {
                 headers: {
@@ -457,7 +472,6 @@ exports.getTodayFixtures = async (req, res) => {
             })
         ]);
 
-        // Combine results
         const allFixtures = [
             ...(todayResponse.data?.response || []),
             ...(tomorrowResponse.data?.response || [])
@@ -467,17 +481,13 @@ exports.getTodayFixtures = async (req, res) => {
             return res.json({ success: true, date: today, count: 0, fixtures: [] });
         }
 
-        // Fetch IPTV channels
         const iptvChannels = await fetchIPTVChannels();
         console.log(`Processing ${allFixtures.length} fixtures against ${iptvChannels.length} IPTV channels`);
 
-        // Process fixtures
         const fixtures = allFixtures
             .map(fixture => {
                 const homeTeam = fixture.teams.home.name;
                 const awayTeam = fixture.teams.away.name;
-
-                // Find matching IPTV stream
                 const iptvStream = findIPTVStream(homeTeam, awayTeam, iptvChannels);
 
                 return {
@@ -509,14 +519,12 @@ exports.getTodayFixtures = async (req, res) => {
                         home: fixture.goals.home,
                         away: fixture.goals.away
                     },
-                    // IPTV stream info (if found)
                     stream: iptvStream
                 };
             })
-            // Filter 1: Hide matches that already passed (except LIVE)
             .filter(f => {
                 const now = Date.now();
-                const kickoff = f.timestamp * 1000; // Convert to milliseconds
+                const kickoff = f.timestamp * 1000;
                 const liveStatuses = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT'];
                 const finishedStatuses = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
 
@@ -524,21 +532,12 @@ exports.getTodayFixtures = async (req, res) => {
                 const isFinished = finishedStatuses.includes(f.status.short);
                 const isUpcoming = f.status.short === 'NS';
 
-                // Always show if LIVE
                 if (isLive) return true;
-
-                // Hide if finished
                 if (isFinished) return false;
-
-                // Show if Upcoming AND kickoff belum lewat
                 if (isUpcoming && kickoff > now) return true;
-
-                // Hide everything else (NS but already passed)
                 return false;
             })
-            // Filter 2: ONLY show matches with IPTV stream
             .filter(f => f.stream !== null)
-            // Sort by status (LIVE first) then by time
             .sort((a, b) => {
                 const liveStatuses = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE'];
                 const aIsLive = liveStatuses.includes(a.status.short);
@@ -549,7 +548,6 @@ exports.getTodayFixtures = async (req, res) => {
 
                 return a.timestamp - b.timestamp;
             })
-            // Remove duplicates (in case same match appears in both days)
             .filter((fixture, index, self) =>
                 index === self.findIndex(f => f.id === fixture.id)
             );
@@ -573,7 +571,6 @@ exports.getTodayFixtures = async (req, res) => {
 // ========== GET LIVE FIXTURES ONLY ==========
 exports.getLiveFixtures = async (req, res) => {
     try {
-        // Fetch from API-Football - LIVE only
         const response = await axios.get(`${API_FOOTBALL_URL}/fixtures`, {
             headers: {
                 'x-rapidapi-key': API_FOOTBALL_KEY,
@@ -589,10 +586,8 @@ exports.getLiveFixtures = async (req, res) => {
             return res.json({ success: true, fixtures: [] });
         }
 
-        // Fetch IPTV channels
         const iptvChannels = await fetchIPTVChannels();
 
-        // Process fixtures
         const fixtures = response.data.response.map(fixture => {
             const homeTeam = fixture.teams.home.name;
             const awayTeam = fixture.teams.away.name;
@@ -673,7 +668,6 @@ exports.getFixtureById = async (req, res) => {
         const homeTeam = fixture.teams.home.name;
         const awayTeam = fixture.teams.away.name;
 
-        // Fetch IPTV channels and find stream
         const iptvChannels = await fetchIPTVChannels();
         const iptvStream = findIPTVStream(homeTeam, awayTeam, iptvChannels);
 
