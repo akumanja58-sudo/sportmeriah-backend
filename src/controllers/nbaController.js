@@ -2,7 +2,6 @@ const axios = require('axios');
 
 // NBA Team name mappings for IPTV matching
 const NBA_TEAM_MAPPINGS = {
-    // Full names to short/common names and abbreviations
     'Atlanta Hawks': ['Hawks', 'Atlanta', 'ATL'],
     'Boston Celtics': ['Celtics', 'Boston', 'BOS'],
     'Brooklyn Nets': ['Nets', 'Brooklyn', 'BKN'],
@@ -46,7 +45,6 @@ const getTeamAliases = (teamName) => {
         }
     }
 
-    // Also add individual words from team name (except common words)
     const skipWords = ['los', 'angeles', 'new', 'york', 'san', 'antonio', 'oklahoma', 'city', 'golden', 'state', 'trail'];
     teamName.split(' ').forEach(word => {
         if (word.length > 2 && !skipWords.includes(word.toLowerCase())) {
@@ -54,21 +52,19 @@ const getTeamAliases = (teamName) => {
         }
     });
 
-    return [...new Set(aliases)]; // Remove duplicates
+    return [...new Set(aliases)];
 };
 
 // Check if IPTV channel matches NBA game
 const matchIptvChannel = (channel, homeTeam, awayTeam) => {
     const channelName = channel.name.toLowerCase();
 
-    // Skip non-match channels (headers, generic channels, empty)
     if (channelName.includes('###') ||
         channelName === 'nba: nba tv hd' ||
         channelName.match(/^nba \d+\s*:?\s*$/)) {
         return false;
     }
 
-    // Must contain "nba" to be relevant
     if (!channelName.includes('nba')) {
         return false;
     }
@@ -76,9 +72,7 @@ const matchIptvChannel = (channel, homeTeam, awayTeam) => {
     const homeAliases = getTeamAliases(homeTeam);
     const awayAliases = getTeamAliases(awayTeam);
 
-    // Check if channel contains both teams
     const hasHome = homeAliases.some(alias => {
-        // Use word boundary matching for short aliases (3 chars like team codes)
         if (alias.length <= 3) {
             const regex = new RegExp(`\\b${alias}\\b|\\(${alias}\\)`, 'i');
             return regex.test(channelName);
@@ -94,18 +88,17 @@ const matchIptvChannel = (channel, homeTeam, awayTeam) => {
         return channelName.includes(alias);
     });
 
-    // Match if channel contains both teams
     return hasHome && hasAway;
 };
 
 // Fetch IPTV channels for NBA (category 605)
 const fetchIptvChannels = async () => {
     try {
-        const baseUrl = process.env.IPTV_BASE_URL;
-        const username = process.env.IPTV_USERNAME;
-        const password = process.env.IPTV_PASSWORD;
+        // USE EXISTING ENV NAMES
+        const baseUrl = process.env.IPTV_SERVER;
+        const username = process.env.IPTV_USER;
+        const password = process.env.IPTV_PASS;
 
-        // NBA category ID
         const categoryId = 605;
 
         const url = `${baseUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams&category_id=${categoryId}`;
@@ -123,7 +116,6 @@ const fetchNbaGames = async (date = null) => {
     try {
         const apiKey = process.env.FOOTBALL_API_KEY;
 
-        // Use today's date if not provided
         if (!date) {
             const today = new Date();
             date = today.toISOString().split('T')[0];
@@ -135,7 +127,7 @@ const fetchNbaGames = async (date = null) => {
             },
             params: {
                 date: date,
-                league: 12, // NBA league ID
+                league: 12,
                 season: '2025-2026'
             },
             timeout: 10000
@@ -148,12 +140,11 @@ const fetchNbaGames = async (date = null) => {
     }
 };
 
-// Fetch NBA games for multiple dates (to catch timezone differences)
+// Fetch NBA games for multiple dates
 const fetchNbaGamesMultiDate = async () => {
     try {
         const apiKey = process.env.FOOTBALL_API_KEY;
 
-        // Get today and tomorrow (UTC) to cover ET timezone differences
         const today = new Date();
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -161,7 +152,6 @@ const fetchNbaGamesMultiDate = async () => {
         const todayStr = today.toISOString().split('T')[0];
         const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
-        // Fetch both days in parallel
         const [todayGames, tomorrowGames] = await Promise.all([
             axios.get('https://v1.basketball.api-sports.io/games', {
                 headers: { 'x-apisports-key': apiKey },
@@ -176,7 +166,6 @@ const fetchNbaGamesMultiDate = async () => {
             }).then(res => res.data.response || []).catch(() => [])
         ]);
 
-        // Combine and deduplicate by game ID
         const allGames = [...todayGames, ...tomorrowGames];
         const uniqueGames = allGames.filter((game, index, self) =>
             index === self.findIndex(g => g.id === game.id)
@@ -189,11 +178,11 @@ const fetchNbaGamesMultiDate = async () => {
     }
 };
 
-// Build stream URL
+// Build stream URL - USE EXISTING ENV NAMES
 const buildStreamUrl = (streamId) => {
-    const baseUrl = process.env.IPTV_BASE_URL;
-    const username = process.env.IPTV_USERNAME;
-    const password = process.env.IPTV_PASSWORD;
+    const baseUrl = process.env.IPTV_SERVER;
+    const username = process.env.IPTV_USER;
+    const password = process.env.IPTV_PASS;
 
     return `${baseUrl}/live/${username}/${password}/${streamId}.m3u8`;
 };
@@ -204,7 +193,6 @@ const processGamesWithStreams = (games, iptvChannels) => {
         const homeTeam = game.teams.home.name;
         const awayTeam = game.teams.away.name;
 
-        // Find matching IPTV channel
         const matchedChannel = iptvChannels.find(channel =>
             matchIptvChannel(channel, homeTeam, awayTeam)
         );
@@ -245,19 +233,15 @@ const getNbaMatches = async (req, res) => {
 
         let nbaGames;
         if (date) {
-            // Specific date requested
             nbaGames = await fetchNbaGames(date);
         } else {
-            // No date = fetch today + tomorrow to cover timezones
             nbaGames = await fetchNbaGamesMultiDate();
         }
 
         const iptvChannels = await fetchIptvChannels();
 
-        // Match games with streams
         const matchedGames = processGamesWithStreams(nbaGames, iptvChannels);
 
-        // Sort: games with streams first, then by timestamp
         matchedGames.sort((a, b) => {
             if (a.hasStream && !b.hasStream) return -1;
             if (!a.hasStream && b.hasStream) return 1;
@@ -269,6 +253,7 @@ const getNbaMatches = async (req, res) => {
             date: date || 'today+tomorrow',
             total: matchedGames.length,
             withStreams: matchedGames.filter(g => g.hasStream).length,
+            iptvChannelsFound: iptvChannels.length,
             matches: matchedGames
         });
 
@@ -288,7 +273,6 @@ const getLiveNbaMatches = async (req, res) => {
             fetchIptvChannels()
         ]);
 
-        // Filter only live games
         const liveStatuses = ['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'HT', 'BT'];
         const liveGames = nbaGames.filter(game =>
             liveStatuses.includes(game.status.short)
@@ -319,7 +303,6 @@ const getTodayNbaMatches = async (req, res) => {
             fetchIptvChannels()
         ]);
 
-        // Filter only upcoming and live games (not finished)
         const activeStatuses = ['NS', 'Q1', 'Q2', 'Q3', 'Q4', 'OT', 'HT', 'BT'];
         const activeGames = nbaGames.filter(game =>
             activeStatuses.includes(game.status.short)
@@ -327,7 +310,6 @@ const getTodayNbaMatches = async (req, res) => {
 
         const matchedGames = processGamesWithStreams(activeGames, iptvChannels);
 
-        // Sort by timestamp
         matchedGames.sort((a, b) => a.timestamp - b.timestamp);
 
         res.json({
