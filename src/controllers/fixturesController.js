@@ -17,6 +17,168 @@ const IPTV_FOOTBALL_CATEGORIES = [
     '755',   // UK| EPL PREMIER LEAGUE PPV
 ];
 
+// ========== TEAM NAME ALIASES ==========
+// Format: 'alias' => ['possible', 'names', 'in', 'api']
+const TEAM_ALIASES = {
+    // Romanian
+    'fcsb': ['steaua bucuresti', 'fcsb', 'steaua'],
+    'steaua': ['steaua bucuresti', 'fcsb', 'steaua'],
+
+    // Austrian/German
+    'rb salzburg': ['red bull salzburg', 'salzburg', 'rb salzburg'],
+    'red bull salzburg': ['red bull salzburg', 'salzburg', 'rb salzburg'],
+    'salzburg': ['red bull salzburg', 'salzburg', 'rb salzburg'],
+    'rb leipzig': ['rasenballsport leipzig', 'rb leipzig', 'leipzig'],
+
+    // Ukrainian
+    'dynamo kyiv': ['dynamo kiev', 'dynamo kyiv', 'dinamo kiev', 'dinamo kyiv'],
+    'dynamo kiev': ['dynamo kiev', 'dynamo kyiv', 'dinamo kiev', 'dinamo kyiv'],
+    'shakhtar': ['shakhtar donetsk', 'shakhtar'],
+
+    // Serbian
+    'crvena zvezda': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda', 'red star'],
+    'crvena zvesda': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda', 'red star'],
+    'red star': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda'],
+
+    // Dutch
+    'az': ['az alkmaar', 'az'],
+    'az alkmaar': ['az alkmaar', 'az'],
+    'psv': ['psv eindhoven', 'psv'],
+    'ajax': ['ajax amsterdam', 'ajax'],
+
+    // Greek
+    'aek athens': ['aek athens fc', 'aek athens', 'aek'],
+    'aek': ['aek athens fc', 'aek athens', 'aek'],
+    'paok': ['paok thessaloniki', 'paok', 'paok fc'],
+    'olympiacos': ['olympiacos piraeus', 'olympiacos', 'olympiakos'],
+
+    // Polish
+    'legia': ['legia warsaw', 'legia warszawa', 'legia'],
+    'legia warszawa': ['legia warsaw', 'legia warszawa', 'legia'],
+    'lech poznan': ['lech poznań', 'lech poznan', 'lech'],
+    'jagiellonia': ['jagiellonia bialystok', 'jagiellonia białystok', 'jagiellonia'],
+
+    // Czech
+    'sparta prague': ['sparta praha', 'sparta prague', 'sparta'],
+    'slavia prague': ['slavia praha', 'slavia prague', 'slavia'],
+    'viktoria plzen': ['viktoria plzeň', 'viktoria plzen', 'plzen', 'plzeň'],
+    'plzen': ['viktoria plzeň', 'viktoria plzen', 'plzen', 'plzeň'],
+
+    // Irish
+    'shamrock rovers': ['shamrock rovers', 'shamrock'],
+    'shamrock': ['shamrock rovers', 'shamrock'],
+
+    // Hungarian
+    'ferencvaros': ['ferencvarosi tc', 'ferencvaros', 'ferencváros', 'fradi'],
+
+    // Scottish
+    'celtic': ['celtic fc', 'celtic glasgow', 'celtic'],
+    'rangers': ['rangers fc', 'glasgow rangers', 'rangers'],
+
+    // English
+    'nottingham forest': ['nottingham forest', 'nott\'m forest', 'forest'],
+    'man united': ['manchester united', 'man utd', 'man united'],
+    'man city': ['manchester city', 'man city'],
+    'tottenham': ['tottenham hotspur', 'tottenham', 'spurs'],
+    'spurs': ['tottenham hotspur', 'tottenham', 'spurs'],
+
+    // Spanish
+    'atletico madrid': ['atletico madrid', 'atlético madrid', 'atletico', 'atleti'],
+    'athletic bilbao': ['athletic club', 'athletic bilbao', 'athletic'],
+    'real sociedad': ['real sociedad', 'la real', 'sociedad'],
+    'real betis': ['real betis', 'betis'],
+    'rayo vallecano': ['rayo vallecano', 'rayo'],
+
+    // Italian
+    'inter': ['inter milan', 'internazionale', 'inter'],
+    'inter milan': ['inter milan', 'internazionale', 'inter'],
+    'ac milan': ['ac milan', 'milan'],
+    'napoli': ['ssc napoli', 'napoli'],
+    'roma': ['as roma', 'roma'],
+    'as roma': ['as roma', 'roma'],
+    'lazio': ['ss lazio', 'lazio'],
+    'fiorentina': ['acf fiorentina', 'fiorentina', 'viola'],
+    'juventus': ['juventus fc', 'juventus', 'juve'],
+
+    // Portuguese
+    'sporting': ['sporting cp', 'sporting lisbon', 'sporting'],
+    'benfica': ['sl benfica', 'benfica'],
+    'porto': ['fc porto', 'porto'],
+    'braga': ['sc braga', 'sporting braga', 'braga'],
+
+    // French
+    'psg': ['paris saint-germain', 'paris saint germain', 'psg', 'paris sg'],
+    'marseille': ['olympique marseille', 'om', 'marseille'],
+    'lyon': ['olympique lyonnais', 'olympique lyon', 'lyon', 'ol'],
+    'monaco': ['as monaco', 'monaco'],
+    'lille': ['losc lille', 'lille', 'losc'],
+    'nice': ['ogc nice', 'nice'],
+    'strasbourg': ['rc strasbourg', 'strasbourg'],
+
+    // German
+    'bayern': ['bayern munich', 'bayern münchen', 'fc bayern', 'bayern'],
+    'dortmund': ['borussia dortmund', 'bvb', 'dortmund'],
+    'gladbach': ['borussia mönchengladbach', 'gladbach', 'bmg'],
+    'leverkusen': ['bayer leverkusen', 'leverkusen', 'bayer 04'],
+    'freiburg': ['sc freiburg', 'freiburg'],
+    'mainz': ['mainz 05', 'fsv mainz', 'mainz'],
+    'frankfurt': ['eintracht frankfurt', 'frankfurt', 'sge'],
+    'stuttgart': ['vfb stuttgart', 'stuttgart'],
+
+    // Belgian
+    'club brugge': ['club brugge', 'club bruges', 'brugge'],
+    'anderlecht': ['rsc anderlecht', 'anderlecht'],
+    'genk': ['krc genk', 'racing genk', 'genk'],
+
+    // Turkish
+    'galatasaray': ['galatasaray sk', 'galatasaray', 'gala'],
+    'fenerbahce': ['fenerbahçe', 'fenerbahce', 'fener'],
+    'besiktas': ['beşiktaş', 'besiktas'],
+
+    // Swedish
+    'malmo': ['malmö ff', 'malmo ff', 'malmo', 'malmö'],
+
+    // Danish
+    'midtjylland': ['fc midtjylland', 'midtjylland'],
+    'copenhagen': ['fc copenhagen', 'fc københavn', 'copenhagen', 'kobenhavn'],
+
+    // Swiss
+    'basel': ['fc basel', 'fc basel 1893', 'basel'],
+    'young boys': ['bsc young boys', 'young boys', 'yb'],
+
+    // Israeli
+    'maccabi tel aviv': ['maccabi tel aviv', 'maccabi ta', 'maccabi tel-aviv'],
+    'maccabi haifa': ['maccabi haifa', 'maccabi haifa fc'],
+
+    // Cypriot
+    'apoel': ['apoel nicosia', 'apoel fc', 'apoel'],
+    'omonia': ['omonia nicosia', 'ac omonia', 'omonia'],
+    'aek larnaca': ['aek larnaca', 'aek larnaka'],
+
+    // Norwegian
+    'brann': ['sk brann', 'brann', 'brann bergen'],
+    'bodo/glimt': ['bodø/glimt', 'bodo glimt', 'bodo/glimt', 'glimt'],
+
+    // Croatian
+    'dinamo zagreb': ['gnk dinamo zagreb', 'dinamo zagreb', 'dinamo'],
+
+    // Bulgarian
+    'ludogorets': ['ludogorets razgrad', 'ludogorets', 'pfc ludogorets'],
+
+    // Slovenian
+    'celje': ['nk celje', 'celje'],
+
+    // Armenian
+    'noah': ['fc noah', 'noah'],
+
+    // Icelandic
+    'breidablik': ['breiðablik', 'breidablik'],
+
+    // Misc
+    'qarabag': ['qarabağ fk', 'qarabag', 'qarabağ'],
+    'sk slovan': ['slovan bratislava', 'sk slovan bratislava', 'slovan'],
+};
+
 // Cache for IPTV channels
 let iptvCache = {
     data: null,
@@ -70,38 +232,79 @@ async function fetchIPTVChannels() {
     }
 }
 
+// ========== NORMALIZE TEAM NAME ==========
+function normalizeTeamName(name) {
+    return name
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
+        .replace(/[''`]/g, '') // Remove apostrophes
+        .replace(/\s*(fc|sc|cf|ac|as|ss|sk|fk|nk|krc|rsc|ogc|losc|gnk|pfc|bsc|vfb|fsv|ssc|acf|sl|rc)\.?\s*/gi, ' ') // Remove common prefixes/suffixes
+        .replace(/\s*(united|city|utd|sporting|athletic|club|academy|hotspur|wanderers|rovers)\.?\s*/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+// ========== GET TEAM ALIASES ==========
+function getTeamAliases(teamName) {
+    const normalized = normalizeTeamName(teamName);
+    const aliases = new Set([normalized, teamName.toLowerCase()]);
+
+    // Check if team has predefined aliases
+    for (const [key, values] of Object.entries(TEAM_ALIASES)) {
+        if (normalized.includes(key) || key.includes(normalized) || teamName.toLowerCase().includes(key)) {
+            values.forEach(v => aliases.add(normalizeTeamName(v)));
+        }
+    }
+
+    // Add individual words as potential matches (min 4 chars)
+    normalized.split(' ').forEach(word => {
+        if (word.length >= 4) {
+            aliases.add(word);
+        }
+    });
+
+    return Array.from(aliases);
+}
+
+// ========== FUZZY MATCH SCORE ==========
+function fuzzyMatchScore(str1, str2) {
+    const s1 = str1.toLowerCase();
+    const s2 = str2.toLowerCase();
+
+    // Exact match
+    if (s1 === s2) return 100;
+
+    // One contains the other
+    if (s1.includes(s2) || s2.includes(s1)) return 90;
+
+    // Check word overlap
+    const words1 = s1.split(' ').filter(w => w.length >= 3);
+    const words2 = s2.split(' ').filter(w => w.length >= 3);
+
+    let matchedWords = 0;
+    for (const w1 of words1) {
+        for (const w2 of words2) {
+            if (w1 === w2 || w1.includes(w2) || w2.includes(w1)) {
+                matchedWords++;
+                break;
+            }
+        }
+    }
+
+    if (matchedWords > 0) {
+        return 50 + (matchedWords / Math.max(words1.length, words2.length)) * 40;
+    }
+
+    return 0;
+}
+
 // ========== MATCH TEAM NAME WITH IPTV ==========
 function findIPTVStream(homeTeam, awayTeam, iptvChannels) {
     if (!iptvChannels || !iptvChannels.length) return null;
 
-    // Clean team names - remove common suffixes
-    const cleanTeamName = (name) => {
-        return name
-            .toLowerCase()
-            .replace(/\s*(fc|sc|cf|united|city|utd|sporting|athletic|club|academy)\.?$/i, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-    };
-
-    const homeClean = cleanTeamName(homeTeam);
-    const awayClean = cleanTeamName(awayTeam);
-
-    // Get significant words (min 3 chars, exclude common words)
-    const commonWords = ['the', 'and', 'united', 'city', 'real', 'athletic', 'sporting', 'club', 'football'];
-    const getSignificantWords = (name) => {
-        return name.split(' ')
-            .filter(w => w.length >= 3 && !commonWords.includes(w));
-    };
-
-    const homeWords = getSignificantWords(homeClean);
-    const awayWords = getSignificantWords(awayClean);
-
-    // Need at least 1 significant word from each team
-    if (homeWords.length === 0 || awayWords.length === 0) {
-        // Fallback: use full name
-        if (homeClean.length >= 3) homeWords.push(homeClean);
-        if (awayClean.length >= 3) awayWords.push(awayClean);
-    }
+    // Get all possible aliases for both teams
+    const homeAliases = getTeamAliases(homeTeam);
+    const awayAliases = getTeamAliases(awayTeam);
 
     let bestMatch = null;
     let bestScore = 0;
@@ -112,77 +315,111 @@ function findIPTVStream(homeTeam, awayTeam, iptvChannels) {
         // Skip header channels (starts with #)
         if (channelName.startsWith('#')) continue;
 
-        // Check for "vs" pattern - multiple formats
-        // Format 1: "... : TeamA vs TeamB @ ..." (old format)
-        // Format 2: "UEFA | 01 - TeamA vs TeamB 8:00pm" (new UEFA format)
-
+        // Extract team names from channel - multiple formats
         let channelHome = '';
         let channelAway = '';
 
-        // Try UEFA format first: "UEFA | XX - TeamA vs TeamB TIME"
-        const uefaMatch = channelName.match(/uefa\s*\|\s*\d+\s*-\s*(.+?)\s+vs\s+(.+?)\s+\d/i);
+        // Try UEFA format: "UEFA | XX - TeamA vs TeamB TIME"
+        const uefaMatch = channelName.match(/(?:uefa|uel|ucl|uecl)\s*\|?\s*\d*\s*-?\s*(.+?)\s+vs\s+(.+?)\s+\d/i);
         if (uefaMatch) {
-            channelHome = cleanTeamName(uefaMatch[1]);
-            channelAway = cleanTeamName(uefaMatch[2]);
+            channelHome = uefaMatch[1].trim();
+            channelAway = uefaMatch[2].trim();
         } else {
-            // Try old format: "... : TeamA vs TeamB @ ..."
-            const vsMatch = channelName.match(/:\s*(.+?)\s+vs\s+(.+?)\s*@/i);
-            if (vsMatch) {
-                channelHome = cleanTeamName(vsMatch[1]);
-                channelAway = cleanTeamName(vsMatch[2]);
+            // Try format: "... : TeamA vs TeamB @ ..."
+            const colonMatch = channelName.match(/:\s*(.+?)\s+vs\s+(.+?)\s*(?:@|\/\/|\d)/i);
+            if (colonMatch) {
+                channelHome = colonMatch[1].trim();
+                channelAway = colonMatch[2].trim();
             } else {
                 // Try simple format: "TeamA vs TeamB"
                 const simpleMatch = channelName.match(/(.+?)\s+vs\s+(.+?)(?:\s+\d|$)/i);
                 if (simpleMatch) {
-                    channelHome = cleanTeamName(simpleMatch[1].replace(/^.*\|\s*\d*\s*-?\s*/, ''));
-                    channelAway = cleanTeamName(simpleMatch[2]);
+                    channelHome = simpleMatch[1].replace(/^.*[-|]\s*/, '').trim();
+                    channelAway = simpleMatch[2].trim();
                 } else {
-                    continue; // Skip if no vs pattern found
+                    continue;
                 }
             }
         }
 
         if (!channelHome || !channelAway) continue;
 
-        // Calculate match score
-        let score = 0;
+        // Normalize channel team names
+        const channelHomeNorm = normalizeTeamName(channelHome);
+        const channelAwayNorm = normalizeTeamName(channelAway);
+        const channelHomeAliases = getTeamAliases(channelHome);
+        const channelAwayAliases = getTeamAliases(channelAway);
 
-        // Check home team match
-        const homeMatchesChannelHome = homeWords.some(word => channelHome.includes(word));
-        const homeMatchesChannelAway = homeWords.some(word => channelAway.includes(word));
+        // Calculate match scores for both possible orderings
+        let homeToHomeScore = 0;
+        let awayToAwayScore = 0;
+        let homeToAwayScore = 0;
+        let awayToHomeScore = 0;
 
-        // Check away team match
-        const awayMatchesChannelHome = awayWords.some(word => channelHome.includes(word));
-        const awayMatchesChannelAway = awayWords.some(word => channelAway.includes(word));
-
-        // Best case: home matches channelHome AND away matches channelAway
-        if (homeMatchesChannelHome && awayMatchesChannelAway) {
-            score = 10;
-        }
-        // Also good: home matches channelAway AND away matches channelHome (reversed)
-        else if (homeMatchesChannelAway && awayMatchesChannelHome) {
-            score = 10;
-        }
-        // Partial match: both teams found but in wrong positions
-        else if ((homeMatchesChannelHome || homeMatchesChannelAway) &&
-            (awayMatchesChannelHome || awayMatchesChannelAway)) {
-            score = 5;
+        // Check home team against channel home
+        for (const ha of homeAliases) {
+            for (const cha of channelHomeAliases) {
+                const score = fuzzyMatchScore(ha, cha);
+                homeToHomeScore = Math.max(homeToHomeScore, score);
+            }
         }
 
-        // Only accept score >= 5 (both teams must match)
-        if (score > bestScore) {
-            bestScore = score;
+        // Check away team against channel away
+        for (const aa of awayAliases) {
+            for (const caa of channelAwayAliases) {
+                const score = fuzzyMatchScore(aa, caa);
+                awayToAwayScore = Math.max(awayToAwayScore, score);
+            }
+        }
+
+        // Check reversed (home vs channel away, away vs channel home)
+        for (const ha of homeAliases) {
+            for (const caa of channelAwayAliases) {
+                const score = fuzzyMatchScore(ha, caa);
+                homeToAwayScore = Math.max(homeToAwayScore, score);
+            }
+        }
+
+        for (const aa of awayAliases) {
+            for (const cha of channelHomeAliases) {
+                const score = fuzzyMatchScore(aa, cha);
+                awayToHomeScore = Math.max(awayToHomeScore, score);
+            }
+        }
+
+        // Calculate total score (best of normal or reversed order)
+        const normalScore = (homeToHomeScore + awayToAwayScore) / 2;
+        const reversedScore = (homeToAwayScore + awayToHomeScore) / 2;
+        const totalScore = Math.max(normalScore, reversedScore);
+
+        // Only accept if both teams have reasonable match (>= 50 each)
+        const minTeamScore = Math.min(
+            Math.max(homeToHomeScore, homeToAwayScore),
+            Math.max(awayToAwayScore, awayToHomeScore)
+        );
+
+        if (totalScore > bestScore && minTeamScore >= 50) {
+            bestScore = totalScore;
             bestMatch = {
                 stream_id: channel.stream_id,
-                channel_name: channel.name
+                channel_name: channel.name,
+                match_score: totalScore
             };
         }
 
-        // Perfect match found, no need to continue
-        if (bestScore >= 10) break;
+        // Perfect match found
+        if (bestScore >= 95) break;
     }
 
-    return bestMatch;
+    // Return match if score is good enough (>= 60)
+    if (bestMatch && bestScore >= 60) {
+        return {
+            stream_id: bestMatch.stream_id,
+            channel_name: bestMatch.channel_name
+        };
+    }
+
+    return null;
 }
 
 // ========== GET TODAY'S FIXTURES ==========
