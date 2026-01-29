@@ -35,8 +35,11 @@ const TEAM_ALIASES = {
     'shakhtar': ['shakhtar donetsk', 'shakhtar'],
 
     // Serbian
-    'crvena zvezda': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda', 'red star'],
-    'red star': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda'],
+    'crvena zvezda': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda', 'red star', 'crvena', 'zvezda', 'crvena zvesda'],
+    'crvena zvesda': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda', 'red star', 'crvena', 'zvezda', 'crvena zvesda'],
+    'red star': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda', 'red star'],
+    'red star belgrade': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda', 'red star'],
+    'fk crvena zvezda': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda', 'red star', 'crvena zvesda'],
 
     // Dutch
     'az': ['az alkmaar', 'az'],
@@ -86,7 +89,8 @@ const TEAM_ALIASES = {
     'athletic bilbao': ['athletic club', 'athletic bilbao', 'athletic'],
     'real sociedad': ['real sociedad', 'la real', 'sociedad'],
     'real betis': ['real betis', 'betis'],
-    'celta vigo': ['celta vigo', 'celta', 'rc celta'],
+    'celta vigo': ['celta vigo', 'celta', 'rc celta', 'celta de vigo'],
+    'celta': ['celta vigo', 'celta', 'rc celta', 'celta de vigo'],
 
     // Italian
     'inter': ['inter milan', 'internazionale', 'inter'],
@@ -594,6 +598,36 @@ exports.getLiveFixtures = async (req, res) => {
             success: false,
             error: error.message
         });
+    }
+};
+
+// ========== DEBUG: GET IPTV CHANNELS ==========
+exports.getIPTVChannels = async (req, res) => {
+    try {
+        const iptvChannels = await fetchIPTVChannels();
+
+        const parsed = iptvChannels.map(ch => {
+            const teams = parseTeamsFromChannel(ch.name);
+            return {
+                stream_id: ch.stream_id,
+                name: ch.name,
+                parsed: teams
+            };
+        });
+
+        const withTeams = parsed.filter(p => p.parsed);
+        const withoutTeams = parsed.filter(p => !p.parsed);
+
+        res.json({
+            success: true,
+            total: iptvChannels.length,
+            parsed_count: withTeams.length,
+            unparsed_count: withoutTeams.length,
+            parsed_streams: withTeams,
+            unparsed_streams: withoutTeams.map(p => p.name)
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 };
 
