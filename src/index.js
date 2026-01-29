@@ -6,7 +6,7 @@ const matchesRoutes = require('./routes/matches');
 const streamsRoutes = require('./routes/streams');
 const footballRoutes = require('./routes/football');
 const fixturesRoutes = require('./routes/fixtures');
-const nbaRoutes = require('./routes/nba'); // NEW: NBA routes
+const basketballRoutes = require('./routes/basketball'); // Basketball routes
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -19,7 +19,7 @@ app.use('/api/matches', matchesRoutes);
 app.use('/api/streams', streamsRoutes);
 app.use('/api/football', footballRoutes);
 app.use('/api/fixtures', fixturesRoutes);
-app.use('/api/nba', nbaRoutes); // NEW: NBA endpoint
+app.use('/api/basketball', basketballRoutes); // Basketball endpoint
 
 // Health check
 app.get('/', (req, res) => {
@@ -27,7 +27,7 @@ app.get('/', (req, res) => {
         status: 'SportMeriah API is running!',
         endpoints: {
             football: '/api/matches',
-            nba: '/api/nba',
+            basketball: '/api/basketball',
             streams: '/api/streams'
         }
     });
