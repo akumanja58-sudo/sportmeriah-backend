@@ -36,7 +36,6 @@ const TEAM_ALIASES = {
 
     // Serbian
     'crvena zvezda': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda', 'red star'],
-    'crvena zvesda': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda', 'red star'],
     'red star': ['fk crvena zvezda', 'red star belgrade', 'crvena zvezda'],
 
     // Dutch
@@ -50,11 +49,10 @@ const TEAM_ALIASES = {
     'aek': ['aek athens fc', 'aek athens', 'aek'],
     'paok': ['paok thessaloniki', 'paok', 'paok fc'],
     'olympiacos': ['olympiacos piraeus', 'olympiacos', 'olympiakos'],
+    'panathinaikos': ['panathinaikos fc', 'panathinaikos'],
 
     // Polish
     'legia': ['legia warsaw', 'legia warszawa', 'legia'],
-    'legia warszawa': ['legia warsaw', 'legia warszawa', 'legia'],
-    'lech poznan': ['lech poznań', 'lech poznan', 'lech'],
     'jagiellonia': ['jagiellonia bialystok', 'jagiellonia białystok', 'jagiellonia'],
 
     // Czech
@@ -63,21 +61,18 @@ const TEAM_ALIASES = {
     'viktoria plzen': ['viktoria plzeň', 'viktoria plzen', 'plzen', 'plzeň'],
     'plzen': ['viktoria plzeň', 'viktoria plzen', 'plzen', 'plzeň'],
 
-    // Irish
-    'shamrock rovers': ['shamrock rovers', 'shamrock'],
-    'shamrock': ['shamrock rovers', 'shamrock'],
-
     // Hungarian
     'ferencvaros': ['ferencvarosi tc', 'ferencvaros', 'ferencváros', 'fradi'],
     'ferencvarosi': ['ferencvarosi tc', 'ferencvaros', 'ferencváros', 'fradi'],
+    'ferencvarosi tc': ['ferencvarosi tc', 'ferencvaros', 'ferencváros', 'fradi'],
 
     // Scottish
     'celtic': ['celtic fc', 'celtic glasgow', 'celtic'],
     'rangers': ['rangers fc', 'glasgow rangers', 'rangers'],
 
     // English
-    'nottingham forest': ['nottingham forest', 'nottm forest', 'forest'],
-    'nottingham': ['nottingham forest', 'nottm forest'],
+    'nottingham forest': ['nottingham forest', 'nottm forest', 'forest', 'nottingham'],
+    'nottingham': ['nottingham forest', 'nottm forest', 'forest'],
     'man united': ['manchester united', 'man utd', 'man united'],
     'manchester united': ['manchester united', 'man utd', 'man united'],
     'man city': ['manchester city', 'man city'],
@@ -91,7 +86,6 @@ const TEAM_ALIASES = {
     'athletic bilbao': ['athletic club', 'athletic bilbao', 'athletic'],
     'real sociedad': ['real sociedad', 'la real', 'sociedad'],
     'real betis': ['real betis', 'betis'],
-    'rayo vallecano': ['rayo vallecano', 'rayo'],
     'celta vigo': ['celta vigo', 'celta', 'rc celta'],
 
     // Italian
@@ -119,15 +113,12 @@ const TEAM_ALIASES = {
     'monaco': ['as monaco', 'monaco'],
     'lille': ['losc lille', 'lille', 'losc'],
     'nice': ['ogc nice', 'nice'],
-    'strasbourg': ['rc strasbourg', 'strasbourg'],
 
     // German
     'bayern': ['bayern munich', 'bayern münchen', 'fc bayern', 'bayern'],
     'dortmund': ['borussia dortmund', 'bvb', 'dortmund'],
-    'gladbach': ['borussia mönchengladbach', 'gladbach', 'bmg'],
     'leverkusen': ['bayer leverkusen', 'leverkusen', 'bayer 04'],
     'freiburg': ['sc freiburg', 'freiburg'],
-    'mainz': ['mainz 05', 'fsv mainz', 'mainz'],
     'frankfurt': ['eintracht frankfurt', 'frankfurt', 'sge'],
     'stuttgart': ['vfb stuttgart', 'stuttgart'],
 
@@ -143,9 +134,11 @@ const TEAM_ALIASES = {
 
     // Swedish
     'malmo': ['malmö ff', 'malmo ff', 'malmo', 'malmö'],
+    'malmo ff': ['malmö ff', 'malmo ff', 'malmo', 'malmö'],
 
     // Danish
     'midtjylland': ['fc midtjylland', 'midtjylland'],
+    'fc midtjylland': ['fc midtjylland', 'midtjylland'],
     'copenhagen': ['fc copenhagen', 'fc københavn', 'copenhagen', 'kobenhavn'],
 
     // Swiss
@@ -154,16 +147,11 @@ const TEAM_ALIASES = {
 
     // Israeli
     'maccabi tel aviv': ['maccabi tel aviv', 'maccabi ta', 'maccabi tel-aviv'],
-    'maccabi haifa': ['maccabi haifa', 'maccabi haifa fc'],
-
-    // Cypriot
-    'apoel': ['apoel nicosia', 'apoel fc', 'apoel'],
-    'omonia': ['omonia nicosia', 'ac omonia', 'omonia'],
-    'aek larnaca': ['aek larnaca', 'aek larnaka'],
 
     // Norwegian
     'brann': ['sk brann', 'brann', 'brann bergen'],
     'bodo/glimt': ['bodø/glimt', 'bodo glimt', 'bodo/glimt', 'glimt'],
+    'bodo glimt': ['bodø/glimt', 'bodo glimt', 'bodo/glimt', 'glimt'],
 
     // Croatian
     'dinamo zagreb': ['gnk dinamo zagreb', 'dinamo zagreb', 'dinamo'],
@@ -171,41 +159,23 @@ const TEAM_ALIASES = {
     // Bulgarian
     'ludogorets': ['ludogorets razgrad', 'ludogorets', 'pfc ludogorets'],
 
-    // Slovenian
-    'celje': ['nk celje', 'celje'],
-
-    // Armenian
-    'noah': ['fc noah', 'noah'],
-
-    // Icelandic
-    'breidablik': ['breiðablik', 'breidablik'],
-
-    // Misc
+    // Others
     'qarabag': ['qarabağ fk', 'qarabag', 'qarabağ'],
-    'sk slovan': ['slovan bratislava', 'sk slovan bratislava', 'slovan'],
+    'go ahead eagles': ['go ahead eagles', 'go ahead'],
+    'sturm graz': ['sturm graz', 'sturm'],
+    'utrecht': ['fc utrecht', 'utrecht'],
+    'feyenoord': ['feyenoord rotterdam', 'feyenoord'],
 };
-
-// Words that should NOT be used for partial matching (too common/short)
-const BLOCKED_PARTIAL_WORDS = [
-    'united', 'city', 'fc', 'sc', 'ac', 'as', 'ss', 'sk', 'fk', 'nk', 'real',
-    'sporting', 'athletic', 'club', 'sport', 'de', 'la', 'le', 'el', 'al',
-    'san', 'santa', 'st', 'new', 'old', 'north', 'south', 'east', 'west',
-    'dynamo', 'dinamo', 'rapid', 'racing', 'victoria', 'viktoria', 'olympique',
-    'olimpia', 'nacional', 'internacional', 'universal', 'royal', 'standard'
-];
-
-// Pairs that should NEVER match (to prevent false positives)
-const BLOCKED_PAIRS = [
-    ['lille', 'lillestrom'],
-    ['atlanta', 'aston'],
-    ['atlanta', 'villa'],
-    ['sporting', 'sport'],
-    ['city', 'city'],  // prevent Man City U21 matching with random city teams
-    ['united', 'united'],
-];
 
 // Cache for IPTV channels
 let iptvCache = {
+    data: null,
+    lastFetch: null,
+    ttl: 5 * 60 * 1000 // 5 minutes
+};
+
+// Cache for fixtures
+let fixturesCache = {
     data: null,
     lastFetch: null,
     ttl: 5 * 60 * 1000 // 5 minutes
@@ -241,7 +211,7 @@ async function fetchIPTVChannels() {
             index === self.findIndex(c => c.stream_id === channel.stream_id)
         );
 
-        console.log(`Fetched ${uniqueChannels.length} unique IPTV channels from ${IPTV_FOOTBALL_CATEGORIES.length} categories`);
+        console.log(`[IPTV] Fetched ${uniqueChannels.length} unique channels from ${IPTV_FOOTBALL_CATEGORIES.length} categories`);
 
         iptvCache.data = uniqueChannels;
         iptvCache.lastFetch = now;
@@ -255,197 +225,107 @@ async function fetchIPTVChannels() {
 
 // ========== NORMALIZE TEAM NAME ==========
 function normalizeTeamName(name) {
+    if (!name) return '';
     return name
         .toLowerCase()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[''`]/g, '')
         .replace(/\s*(fc|sc|cf|ac|as|ss|sk|fk|nk|krc|rsc|ogc|losc|gnk|pfc|bsc|vfb|fsv|ssc|acf|sl|rc)\.?\s*/gi, ' ')
-        .replace(/\s*(united|city|utd|sporting|athletic|club|academy|hotspur|wanderers|rovers)\.?\s*/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim();
 }
 
-// ========== CHECK IF PAIR IS BLOCKED ==========
-function isPairBlocked(word1, word2) {
-    const w1 = word1.toLowerCase();
-    const w2 = word2.toLowerCase();
+// ========== GET ALL TEAM VARIATIONS ==========
+function getTeamVariations(teamName) {
+    const normalized = normalizeTeamName(teamName);
+    const variations = new Set([normalized, teamName.toLowerCase()]);
 
-    for (const [blocked1, blocked2] of BLOCKED_PAIRS) {
-        if ((w1.includes(blocked1) && w2.includes(blocked2)) ||
-            (w1.includes(blocked2) && w2.includes(blocked1))) {
-            return true;
+    // Check aliases
+    for (const [key, values] of Object.entries(TEAM_ALIASES)) {
+        if (normalized.includes(key) || key.includes(normalized) || teamName.toLowerCase().includes(key)) {
+            values.forEach(v => variations.add(v.toLowerCase()));
         }
     }
+
+    return Array.from(variations);
+}
+
+// ========== PARSE TEAMS FROM IPTV CHANNEL NAME ==========
+function parseTeamsFromChannel(channelName) {
+    if (!channelName) return null;
+
+    const name = channelName.toLowerCase();
+
+    // Skip header channels
+    if (name.startsWith('#') || name.includes('--------')) return null;
+
+    let homeTeam = '';
+    let awayTeam = '';
+
+    // Pattern 1: "UEFA | XX - TeamA vs TeamB TIME"
+    const uefaMatch = name.match(/(?:uefa|uel|ucl|uecl)\s*\|?\s*\d*\s*-?\s*(.+?)\s+vs\s+(.+?)\s+\d/i);
+    if (uefaMatch) {
+        homeTeam = uefaMatch[1].trim();
+        awayTeam = uefaMatch[2].trim();
+    }
+
+    // Pattern 2: "... : TeamA vs TeamB @ ..."
+    if (!homeTeam) {
+        const colonMatch = name.match(/:\s*(.+?)\s+vs\s+(.+?)\s*(?:@|\/\/|\d)/i);
+        if (colonMatch) {
+            homeTeam = colonMatch[1].trim();
+            awayTeam = colonMatch[2].trim();
+        }
+    }
+
+    // Pattern 3: "TeamA vs TeamB" (simple)
+    if (!homeTeam) {
+        const simpleMatch = name.match(/(.+?)\s+vs\s+(.+?)(?:\s+\d|$)/i);
+        if (simpleMatch) {
+            homeTeam = simpleMatch[1].replace(/^.*[-|]\s*/, '').trim();
+            awayTeam = simpleMatch[2].trim();
+        }
+    }
+
+    if (!homeTeam || !awayTeam) return null;
+
+    // Clean up team names
+    homeTeam = homeTeam.replace(/^\d+\s*-?\s*/, '').trim();
+    awayTeam = awayTeam.replace(/\s*\d+:\d+.*$/, '').trim();
+
+    return { homeTeam, awayTeam };
+}
+
+// ========== CHECK IF TEAMS MATCH ==========
+function teamsMatch(iptvTeam, apiTeam) {
+    const iptvVariations = getTeamVariations(iptvTeam);
+    const apiVariations = getTeamVariations(apiTeam);
+
+    // Check exact match
+    for (const iv of iptvVariations) {
+        for (const av of apiVariations) {
+            if (iv === av) return true;
+            // Check if one contains the other (min 5 chars)
+            if (iv.length >= 5 && av.length >= 5) {
+                if (iv.includes(av) || av.includes(iv)) return true;
+            }
+        }
+    }
+
     return false;
 }
 
-// ========== GET TEAM KEYWORDS ==========
-function getTeamKeywords(teamName) {
-    const normalized = normalizeTeamName(teamName);
-    const keywords = new Set();
+// ========== FETCH TODAY'S FIXTURES FROM API ==========
+async function fetchTodayFixtures() {
+    const now = Date.now();
 
-    // Add full normalized name
-    keywords.add(normalized);
-
-    // Check predefined aliases
-    for (const [key, values] of Object.entries(TEAM_ALIASES)) {
-        const keyNorm = normalizeTeamName(key);
-        if (normalized.includes(keyNorm) || keyNorm.includes(normalized) ||
-            teamName.toLowerCase().includes(key)) {
-            values.forEach(v => keywords.add(normalizeTeamName(v)));
-        }
+    if (fixturesCache.data && fixturesCache.lastFetch && (now - fixturesCache.lastFetch < fixturesCache.ttl)) {
+        return fixturesCache.data;
     }
 
-    // Add individual words (min 5 chars, not blocked)
-    normalized.split(' ').forEach(word => {
-        if (word.length >= 5 && !BLOCKED_PARTIAL_WORDS.includes(word)) {
-            keywords.add(word);
-        }
-    });
-
-    // Also add original team name words (min 5 chars)
-    teamName.toLowerCase().split(/\s+/).forEach(word => {
-        const clean = word.replace(/[^a-z]/g, '');
-        if (clean.length >= 5 && !BLOCKED_PARTIAL_WORDS.includes(clean)) {
-            keywords.add(clean);
-        }
-    });
-
-    return Array.from(keywords);
-}
-
-// ========== CALCULATE MATCH SCORE ==========
-function calculateMatchScore(keywords1, keywords2) {
-    let bestScore = 0;
-
-    for (const kw1 of keywords1) {
-        for (const kw2 of keywords2) {
-            // Skip if pair is blocked
-            if (isPairBlocked(kw1, kw2)) continue;
-
-            let score = 0;
-
-            // Exact match
-            if (kw1 === kw2) {
-                score = 100;
-            }
-            // One contains the other (only if both are 5+ chars)
-            else if (kw1.length >= 5 && kw2.length >= 5) {
-                if (kw1.includes(kw2) || kw2.includes(kw1)) {
-                    // Make sure it's a significant match (>70% overlap)
-                    const shorter = kw1.length < kw2.length ? kw1 : kw2;
-                    const longer = kw1.length >= kw2.length ? kw1 : kw2;
-                    const overlap = shorter.length / longer.length;
-
-                    if (overlap >= 0.7) {
-                        score = 85;
-                    }
-                }
-            }
-
-            bestScore = Math.max(bestScore, score);
-            if (bestScore >= 100) break;
-        }
-        if (bestScore >= 100) break;
-    }
-
-    return bestScore;
-}
-
-// ========== MATCH TEAM NAME WITH IPTV ==========
-function findIPTVStream(homeTeam, awayTeam, iptvChannels) {
-    if (!iptvChannels || !iptvChannels.length) return null;
-
-    const homeKeywords = getTeamKeywords(homeTeam);
-    const awayKeywords = getTeamKeywords(awayTeam);
-
-    let bestMatch = null;
-    let bestScore = 0;
-
-    for (const channel of iptvChannels) {
-        const channelName = channel.name.toLowerCase();
-
-        // Skip header channels
-        if (channelName.startsWith('#')) continue;
-
-        // Extract team names from channel
-        let channelHome = '';
-        let channelAway = '';
-
-        // Try UEFA format: "UEFA | XX - TeamA vs TeamB TIME"
-        const uefaMatch = channelName.match(/(?:uefa|uel|ucl|uecl)\s*\|?\s*\d*\s*-?\s*(.+?)\s+vs\s+(.+?)\s+\d/i);
-        if (uefaMatch) {
-            channelHome = uefaMatch[1].trim();
-            channelAway = uefaMatch[2].trim();
-        } else {
-            // Try format: "... : TeamA vs TeamB @ ..."
-            const colonMatch = channelName.match(/:\s*(.+?)\s+vs\s+(.+?)\s*(?:@|\/\/|\d)/i);
-            if (colonMatch) {
-                channelHome = colonMatch[1].trim();
-                channelAway = colonMatch[2].trim();
-            } else {
-                // Try simple format: "TeamA vs TeamB"
-                const simpleMatch = channelName.match(/(.+?)\s+vs\s+(.+?)(?:\s+\d|$)/i);
-                if (simpleMatch) {
-                    channelHome = simpleMatch[1].replace(/^.*[-|]\s*/, '').trim();
-                    channelAway = simpleMatch[2].trim();
-                } else {
-                    continue;
-                }
-            }
-        }
-
-        if (!channelHome || !channelAway) continue;
-
-        const channelHomeKeywords = getTeamKeywords(channelHome);
-        const channelAwayKeywords = getTeamKeywords(channelAway);
-
-        // Calculate scores for normal order (home-home, away-away)
-        const homeToHomeScore = calculateMatchScore(homeKeywords, channelHomeKeywords);
-        const awayToAwayScore = calculateMatchScore(awayKeywords, channelAwayKeywords);
-
-        // Calculate scores for reversed order (home-away, away-home)
-        const homeToAwayScore = calculateMatchScore(homeKeywords, channelAwayKeywords);
-        const awayToHomeScore = calculateMatchScore(awayKeywords, channelHomeKeywords);
-
-        // Check normal order
-        if (homeToHomeScore >= 85 && awayToAwayScore >= 85) {
-            const totalScore = (homeToHomeScore + awayToAwayScore) / 2;
-            if (totalScore > bestScore) {
-                bestScore = totalScore;
-                bestMatch = {
-                    stream_id: channel.stream_id,
-                    channel_name: channel.name
-                };
-            }
-        }
-
-        // Check reversed order
-        if (homeToAwayScore >= 85 && awayToHomeScore >= 85) {
-            const totalScore = (homeToAwayScore + awayToHomeScore) / 2;
-            if (totalScore > bestScore) {
-                bestScore = totalScore;
-                bestMatch = {
-                    stream_id: channel.stream_id,
-                    channel_name: channel.name
-                };
-            }
-        }
-
-        // Perfect match found
-        if (bestScore >= 100) break;
-    }
-
-    return bestMatch;
-}
-
-// ========== GET TODAY'S FIXTURES ==========
-exports.getTodayFixtures = async (req, res) => {
     try {
-        const now = new Date();
         const jakartaOffset = 7 * 60 * 60 * 1000;
-        const jakartaNow = new Date(now.getTime() + jakartaOffset);
-
+        const jakartaNow = new Date(Date.now() + jakartaOffset);
         const today = jakartaNow.toISOString().split('T')[0];
         const tomorrow = new Date(jakartaNow.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -455,20 +335,14 @@ exports.getTodayFixtures = async (req, res) => {
                     'x-rapidapi-key': API_FOOTBALL_KEY,
                     'x-rapidapi-host': 'v3.football.api-sports.io'
                 },
-                params: {
-                    date: today,
-                    timezone: 'Asia/Jakarta'
-                }
+                params: { date: today, timezone: 'Asia/Jakarta' }
             }),
             axios.get(`${API_FOOTBALL_URL}/fixtures`, {
                 headers: {
                     'x-rapidapi-key': API_FOOTBALL_KEY,
                     'x-rapidapi-host': 'v3.football.api-sports.io'
                 },
-                params: {
-                    date: tomorrow,
-                    timezone: 'Asia/Jakarta'
-                }
+                params: { date: tomorrow, timezone: 'Asia/Jakarta' }
             })
         ]);
 
@@ -477,20 +351,75 @@ exports.getTodayFixtures = async (req, res) => {
             ...(tomorrowResponse.data?.response || [])
         ];
 
-        if (!allFixtures.length) {
-            return res.json({ success: true, date: today, count: 0, fixtures: [] });
+        console.log(`[API-Football] Fetched ${allFixtures.length} fixtures for ${today} and ${tomorrow}`);
+
+        fixturesCache.data = allFixtures;
+        fixturesCache.lastFetch = now;
+
+        return fixturesCache.data;
+    } catch (error) {
+        console.error('Failed to fetch fixtures:', error.message);
+        return fixturesCache.data || [];
+    }
+}
+
+// ========== FIND FIXTURE FOR IPTV STREAM ==========
+function findFixtureForStream(iptvHome, iptvAway, fixtures) {
+    for (const fixture of fixtures) {
+        const apiHome = fixture.teams.home.name;
+        const apiAway = fixture.teams.away.name;
+
+        // Check normal order
+        if (teamsMatch(iptvHome, apiHome) && teamsMatch(iptvAway, apiAway)) {
+            return fixture;
         }
 
+        // Check reversed order
+        if (teamsMatch(iptvHome, apiAway) && teamsMatch(iptvAway, apiHome)) {
+            return fixture;
+        }
+    }
+
+    return null;
+}
+
+// ========== MAIN: GET TODAY'S FIXTURES (IPTV-FIRST APPROACH) ==========
+exports.getTodayFixtures = async (req, res) => {
+    try {
+        // Step 1: Fetch IPTV channels
         const iptvChannels = await fetchIPTVChannels();
-        console.log(`Processing ${allFixtures.length} fixtures against ${iptvChannels.length} IPTV channels`);
+        console.log(`[Step 1] Got ${iptvChannels.length} IPTV channels`);
 
-        const fixtures = allFixtures
-            .map(fixture => {
-                const homeTeam = fixture.teams.home.name;
-                const awayTeam = fixture.teams.away.name;
-                const iptvStream = findIPTVStream(homeTeam, awayTeam, iptvChannels);
+        // Step 2: Parse teams from IPTV channels
+        const parsedStreams = [];
+        for (const channel of iptvChannels) {
+            const parsed = parseTeamsFromChannel(channel.name);
+            if (parsed) {
+                parsedStreams.push({
+                    stream_id: channel.stream_id,
+                    channel_name: channel.name,
+                    homeTeam: parsed.homeTeam,
+                    awayTeam: parsed.awayTeam
+                });
+            }
+        }
+        console.log(`[Step 2] Parsed ${parsedStreams.length} streams with team names`);
 
-                return {
+        // Step 3: Fetch fixtures from API-Football
+        const allFixtures = await fetchTodayFixtures();
+        console.log(`[Step 3] Got ${allFixtures.length} fixtures from API`);
+
+        // Step 4: Match IPTV streams with fixtures
+        const matchedFixtures = [];
+        const usedFixtureIds = new Set();
+
+        for (const stream of parsedStreams) {
+            const fixture = findFixtureForStream(stream.homeTeam, stream.awayTeam, allFixtures);
+
+            if (fixture && !usedFixtureIds.has(fixture.fixture.id)) {
+                usedFixtureIds.add(fixture.fixture.id);
+
+                matchedFixtures.push({
                     id: fixture.fixture.id,
                     date: fixture.fixture.date,
                     timestamp: fixture.fixture.timestamp,
@@ -507,11 +436,11 @@ exports.getTodayFixtures = async (req, res) => {
                     },
                     teams: {
                         home: {
-                            name: homeTeam,
+                            name: fixture.teams.home.name,
                             logo: fixture.teams.home.logo
                         },
                         away: {
-                            name: awayTeam,
+                            name: fixture.teams.away.name,
                             logo: fixture.teams.away.logo
                         }
                     },
@@ -519,15 +448,26 @@ exports.getTodayFixtures = async (req, res) => {
                         home: fixture.goals.home,
                         away: fixture.goals.away
                     },
-                    stream: iptvStream
-                };
-            })
-            .filter(f => {
-                const now = Date.now();
-                const kickoff = f.timestamp * 1000;
-                const liveStatuses = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT'];
-                const finishedStatuses = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+                    stream: {
+                        stream_id: stream.stream_id,
+                        channel_name: stream.channel_name
+                    }
+                });
 
+                console.log(`[Match] ${stream.homeTeam} vs ${stream.awayTeam} → ${fixture.teams.home.name} vs ${fixture.teams.away.name}`);
+            }
+        }
+
+        console.log(`[Step 4] Matched ${matchedFixtures.length} fixtures with streams`);
+
+        // Step 5: Filter and sort
+        const now = Date.now();
+        const liveStatuses = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE', 'BT'];
+        const finishedStatuses = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+
+        const filteredFixtures = matchedFixtures
+            .filter(f => {
+                const kickoff = f.timestamp * 1000;
                 const isLive = liveStatuses.includes(f.status.short);
                 const isFinished = finishedStatuses.includes(f.status.short);
                 const isUpcoming = f.status.short === 'NS';
@@ -537,9 +477,7 @@ exports.getTodayFixtures = async (req, res) => {
                 if (isUpcoming && kickoff > now) return true;
                 return false;
             })
-            .filter(f => f.stream !== null)
             .sort((a, b) => {
-                const liveStatuses = ['1H', '2H', 'HT', 'ET', 'P', 'LIVE'];
                 const aIsLive = liveStatuses.includes(a.status.short);
                 const bIsLive = liveStatuses.includes(b.status.short);
 
@@ -547,20 +485,20 @@ exports.getTodayFixtures = async (req, res) => {
                 if (!aIsLive && bIsLive) return 1;
 
                 return a.timestamp - b.timestamp;
-            })
-            .filter((fixture, index, self) =>
-                index === self.findIndex(f => f.id === fixture.id)
-            );
+            });
+
+        const jakartaNow = new Date(Date.now() + 7 * 60 * 60 * 1000);
+        const today = jakartaNow.toISOString().split('T')[0];
 
         res.json({
             success: true,
             date: today,
-            count: fixtures.length,
-            fixtures
+            count: filteredFixtures.length,
+            fixtures: filteredFixtures
         });
 
     } catch (error) {
-        console.error('Failed to fetch fixtures:', error.message);
+        console.error('Failed to process fixtures:', error.message);
         res.status(500).json({
             success: false,
             error: error.message
@@ -571,65 +509,83 @@ exports.getTodayFixtures = async (req, res) => {
 // ========== GET LIVE FIXTURES ONLY ==========
 exports.getLiveFixtures = async (req, res) => {
     try {
+        // Reuse the main logic but filter for live only
+        const iptvChannels = await fetchIPTVChannels();
+
+        const parsedStreams = [];
+        for (const channel of iptvChannels) {
+            const parsed = parseTeamsFromChannel(channel.name);
+            if (parsed) {
+                parsedStreams.push({
+                    stream_id: channel.stream_id,
+                    channel_name: channel.name,
+                    homeTeam: parsed.homeTeam,
+                    awayTeam: parsed.awayTeam
+                });
+            }
+        }
+
+        // Fetch live fixtures
         const response = await axios.get(`${API_FOOTBALL_URL}/fixtures`, {
             headers: {
                 'x-rapidapi-key': API_FOOTBALL_KEY,
                 'x-rapidapi-host': 'v3.football.api-sports.io'
             },
-            params: {
-                live: 'all',
-                timezone: 'Asia/Jakarta'
-            }
+            params: { live: 'all', timezone: 'Asia/Jakarta' }
         });
 
-        if (!response.data || !response.data.response) {
-            return res.json({ success: true, fixtures: [] });
-        }
+        const liveFixtures = response.data?.response || [];
 
-        const iptvChannels = await fetchIPTVChannels();
+        const matchedFixtures = [];
+        const usedFixtureIds = new Set();
 
-        const fixtures = response.data.response.map(fixture => {
-            const homeTeam = fixture.teams.home.name;
-            const awayTeam = fixture.teams.away.name;
-            const iptvStream = findIPTVStream(homeTeam, awayTeam, iptvChannels);
+        for (const stream of parsedStreams) {
+            const fixture = findFixtureForStream(stream.homeTeam, stream.awayTeam, liveFixtures);
 
-            return {
-                id: fixture.fixture.id,
-                date: fixture.fixture.date,
-                timestamp: fixture.fixture.timestamp,
-                status: {
-                    short: fixture.fixture.status.short,
-                    long: fixture.fixture.status.long,
-                    elapsed: fixture.fixture.status.elapsed
-                },
-                league: {
-                    id: fixture.league.id,
-                    name: fixture.league.name,
-                    country: fixture.league.country,
-                    logo: fixture.league.logo
-                },
-                teams: {
-                    home: {
-                        name: homeTeam,
-                        logo: fixture.teams.home.logo
+            if (fixture && !usedFixtureIds.has(fixture.fixture.id)) {
+                usedFixtureIds.add(fixture.fixture.id);
+
+                matchedFixtures.push({
+                    id: fixture.fixture.id,
+                    date: fixture.fixture.date,
+                    timestamp: fixture.fixture.timestamp,
+                    status: {
+                        short: fixture.fixture.status.short,
+                        long: fixture.fixture.status.long,
+                        elapsed: fixture.fixture.status.elapsed
                     },
-                    away: {
-                        name: awayTeam,
-                        logo: fixture.teams.away.logo
+                    league: {
+                        id: fixture.league.id,
+                        name: fixture.league.name,
+                        country: fixture.league.country,
+                        logo: fixture.league.logo
+                    },
+                    teams: {
+                        home: {
+                            name: fixture.teams.home.name,
+                            logo: fixture.teams.home.logo
+                        },
+                        away: {
+                            name: fixture.teams.away.name,
+                            logo: fixture.teams.away.logo
+                        }
+                    },
+                    goals: {
+                        home: fixture.goals.home,
+                        away: fixture.goals.away
+                    },
+                    stream: {
+                        stream_id: stream.stream_id,
+                        channel_name: stream.channel_name
                     }
-                },
-                goals: {
-                    home: fixture.goals.home,
-                    away: fixture.goals.away
-                },
-                stream: iptvStream
-            };
-        });
+                });
+            }
+        }
 
         res.json({
             success: true,
-            count: fixtures.length,
-            fixtures
+            count: matchedFixtures.length,
+            fixtures: matchedFixtures
         });
 
     } catch (error) {
@@ -651,10 +607,7 @@ exports.getFixtureById = async (req, res) => {
                 'x-rapidapi-key': API_FOOTBALL_KEY,
                 'x-rapidapi-host': 'v3.football.api-sports.io'
             },
-            params: {
-                id: id,
-                timezone: 'Asia/Jakarta'
-            }
+            params: { id: id, timezone: 'Asia/Jakarta' }
         });
 
         if (!response.data || !response.data.response || !response.data.response[0]) {
@@ -668,8 +621,23 @@ exports.getFixtureById = async (req, res) => {
         const homeTeam = fixture.teams.home.name;
         const awayTeam = fixture.teams.away.name;
 
+        // Find matching stream
         const iptvChannels = await fetchIPTVChannels();
-        const iptvStream = findIPTVStream(homeTeam, awayTeam, iptvChannels);
+        let matchedStream = null;
+
+        for (const channel of iptvChannels) {
+            const parsed = parseTeamsFromChannel(channel.name);
+            if (parsed) {
+                if ((teamsMatch(parsed.homeTeam, homeTeam) && teamsMatch(parsed.awayTeam, awayTeam)) ||
+                    (teamsMatch(parsed.homeTeam, awayTeam) && teamsMatch(parsed.awayTeam, homeTeam))) {
+                    matchedStream = {
+                        stream_id: channel.stream_id,
+                        channel_name: channel.name
+                    };
+                    break;
+                }
+            }
+        }
 
         res.json({
             success: true,
@@ -707,7 +675,7 @@ exports.getFixtureById = async (req, res) => {
                     away: fixture.goals.away
                 },
                 score: fixture.score,
-                stream: iptvStream
+                stream: matchedStream
             }
         });
 
