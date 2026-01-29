@@ -9,6 +9,14 @@ const IPTV_BASE_URL = process.env.IPTV_SERVER;
 const IPTV_USERNAME = process.env.IPTV_USER;
 const IPTV_PASSWORD = process.env.IPTV_PASS;
 
+// IPTV Categories for Football
+const IPTV_FOOTBALL_CATEGORIES = [
+    '1497',  // US| UEFA PPV (Europa League, Conference League, Champions League)
+    '952',   // UK| LIVE FOOTBALL PPV
+    '921',   // UK| UEFA PPV
+    '755',   // UK| EPL PREMIER LEAGUE PPV
+];
+
 // Cache for IPTV channels
 let iptvCache = {
     data: null,
@@ -26,10 +34,33 @@ async function fetchIPTVChannels() {
     }
 
     try {
-        const url = `${IPTV_BASE_URL}/player_api.php?username=${IPTV_USERNAME}&password=${IPTV_PASSWORD}&action=get_live_streams&category_id=171`;
-        const res = await axios.get(url, { timeout: 10000 });
+        // Fetch from multiple categories in parallel
+        const fetchPromises = IPTV_FOOTBALL_CATEGORIES.map(categoryId => {
+            const url = `${IPTV_BASE_URL}/player_api.php?username=${IPTV_USERNAME}&password=${IPTV_PASSWORD}&action=get_live_streams&category_id=${categoryId}`;
+            return axios.get(url, { timeout: 10000 }).catch(err => {
+                console.error(`Failed to fetch category ${categoryId}:`, err.message);
+                return { data: [] };
+            });
+        });
 
-        iptvCache.data = res.data || [];
+        const responses = await Promise.all(fetchPromises);
+
+        // Combine all channels from all categories
+        let allChannels = [];
+        responses.forEach(res => {
+            if (res.data && Array.isArray(res.data)) {
+                allChannels = [...allChannels, ...res.data];
+            }
+        });
+
+        // Remove duplicates by stream_id
+        const uniqueChannels = allChannels.filter((channel, index, self) =>
+            index === self.findIndex(c => c.stream_id === channel.stream_id)
+        );
+
+        console.log(`Fetched ${uniqueChannels.length} unique IPTV channels from ${IPTV_FOOTBALL_CATEGORIES.length} categories`);
+
+        iptvCache.data = uniqueChannels;
         iptvCache.lastFetch = now;
 
         return iptvCache.data;
@@ -78,15 +109,40 @@ function findIPTVStream(homeTeam, awayTeam, iptvChannels) {
     for (const channel of iptvChannels) {
         const channelName = channel.name.toLowerCase();
 
-        // Skip if channel doesn't contain "vs" (not a match channel)
-        if (!channelName.includes(' vs ')) continue;
+        // Skip header channels (starts with #)
+        if (channelName.startsWith('#')) continue;
 
-        // Extract team names from channel (format: "... : TeamA vs TeamB @ ...")
-        const vsMatch = channelName.match(/:\s*(.+?)\s+vs\s+(.+?)\s*@/i);
-        if (!vsMatch) continue;
+        // Check for "vs" pattern - multiple formats
+        // Format 1: "... : TeamA vs TeamB @ ..." (old format)
+        // Format 2: "UEFA | 01 - TeamA vs TeamB 8:00pm" (new UEFA format)
 
-        const channelHome = cleanTeamName(vsMatch[1]);
-        const channelAway = cleanTeamName(vsMatch[2]);
+        let channelHome = '';
+        let channelAway = '';
+
+        // Try UEFA format first: "UEFA | XX - TeamA vs TeamB TIME"
+        const uefaMatch = channelName.match(/uefa\s*\|\s*\d+\s*-\s*(.+?)\s+vs\s+(.+?)\s+\d/i);
+        if (uefaMatch) {
+            channelHome = cleanTeamName(uefaMatch[1]);
+            channelAway = cleanTeamName(uefaMatch[2]);
+        } else {
+            // Try old format: "... : TeamA vs TeamB @ ..."
+            const vsMatch = channelName.match(/:\s*(.+?)\s+vs\s+(.+?)\s*@/i);
+            if (vsMatch) {
+                channelHome = cleanTeamName(vsMatch[1]);
+                channelAway = cleanTeamName(vsMatch[2]);
+            } else {
+                // Try simple format: "TeamA vs TeamB"
+                const simpleMatch = channelName.match(/(.+?)\s+vs\s+(.+?)(?:\s+\d|$)/i);
+                if (simpleMatch) {
+                    channelHome = cleanTeamName(simpleMatch[1].replace(/^.*\|\s*\d*\s*-?\s*/, ''));
+                    channelAway = cleanTeamName(simpleMatch[2]);
+                } else {
+                    continue; // Skip if no vs pattern found
+                }
+            }
+        }
+
+        if (!channelHome || !channelAway) continue;
 
         // Calculate match score
         let score = 0;
@@ -171,11 +227,12 @@ exports.getTodayFixtures = async (req, res) => {
         ];
 
         if (!allFixtures.length) {
-            return res.json({ success: true, fixtures: [] });
+            return res.json({ success: true, date: today, count: 0, fixtures: [] });
         }
 
         // Fetch IPTV channels
         const iptvChannels = await fetchIPTVChannels();
+        console.log(`Processing ${allFixtures.length} fixtures against ${iptvChannels.length} IPTV channels`);
 
         // Process fixtures
         const fixtures = allFixtures
