@@ -11,10 +11,45 @@ const IPTV_PASSWORD = process.env.IPTV_PASS;
 
 // IPTV Categories for Football
 const IPTV_FOOTBALL_CATEGORIES = [
+    // UEFA Competitions
     '1497',  // US| UEFA PPV (Europa League, Conference League, Champions League)
-    '952',   // UK| LIVE FOOTBALL PPV
     '921',   // UK| UEFA PPV
+
+    // Premier League
     '755',   // UK| EPL PREMIER LEAGUE PPV
+    '1865',  // UK| EPL PREMIER LEAGUE PPV VIP
+    '952',   // UK| LIVE FOOTBALL PPV
+
+    // La Liga (Spain)
+    '870',   // ES| M+ LALIGA VIP
+    '552',   // ES| DAZN LALIGA VIP
+    '1616',  // ES| LALIGA+ PPV VIP
+    '2045',  // ES| LALIGA+ PPV
+
+    // Serie A (Italy)
+    '977',   // UK| SERIE A TEAM PPV
+    '681',   // IT| SERIE A/B/C
+    '590',   // IT| DAZN PPV
+
+    // Bundesliga (Germany)
+    '1137',  // DE| BUNDESLIGA HD/4K
+    '2018',  // DE| LEAGUES FOOTBALL PPV
+
+    // Ligue 1 (France)
+    '1614',  // UK| LIGUE 1 PPV
+    '1952',  // FR| LIGUE1+ VIP RAW
+    '1954',  // FR| LIGUE1+
+
+    // Other Leagues
+    '769',   // UK| CHAMPIONSHIP PPV
+    '766',   // UK| LEAGUE ONE PPV
+    '767',   // UK| LEAGUE TWO PPV
+    '930',   // UK| SPFL/SCOTTISH PPV
+    '607',   // US| MLS PPV
+    '1151',  // US| MLS PPV VIP
+    '1882',  // US| FIFA+ PPV
+    '976',   // UK| LA LIGA TEAM PPV
+    '975',   // UK| HUB PREMIER PPV
 ];
 
 // ========== TEAM NAME ALIASES ==========
@@ -46,6 +81,8 @@ const TEAM_ALIASES = {
     'az alkmaar': ['az alkmaar', 'az'],
     'psv': ['psv eindhoven', 'psv'],
     'ajax': ['ajax amsterdam', 'ajax'],
+    'feyenoord': ['feyenoord rotterdam', 'feyenoord'],
+    'twente': ['fc twente', 'twente'],
 
     // Greek
     'aek athens': ['aek athens fc', 'aek athens', 'aek'],
@@ -72,27 +109,85 @@ const TEAM_ALIASES = {
     // Scottish
     'celtic': ['celtic fc', 'celtic glasgow', 'celtic'],
     'rangers': ['rangers fc', 'glasgow rangers', 'rangers'],
+    'hearts': ['heart of midlothian', 'hearts', 'heart'],
+    'hibs': ['hibernian', 'hibs', 'hibernian fc'],
+    'aberdeen': ['aberdeen fc', 'aberdeen'],
 
-    // English
+    // English - Premier League
     'nottingham forest': ['nottingham forest', 'nottm forest', 'forest', 'nottingham'],
     'nottingham': ['nottingham forest', 'nottm forest', 'forest'],
-    'man united': ['manchester united', 'man utd', 'man united'],
+    'man united': ['manchester united', 'man utd', 'man united', 'manchester utd'],
     'manchester united': ['manchester united', 'man utd', 'man united'],
     'man city': ['manchester city', 'man city'],
     'manchester city': ['manchester city', 'man city'],
     'tottenham': ['tottenham hotspur', 'tottenham', 'spurs'],
     'spurs': ['tottenham hotspur', 'tottenham', 'spurs'],
     'aston villa': ['aston villa', 'villa'],
+    'arsenal': ['arsenal fc', 'arsenal'],
+    'chelsea': ['chelsea fc', 'chelsea'],
+    'liverpool': ['liverpool fc', 'liverpool'],
+    'newcastle': ['newcastle united', 'newcastle', 'newcastle utd'],
+    'west ham': ['west ham united', 'west ham', 'west ham utd'],
+    'brighton': ['brighton & hove albion', 'brighton', 'brighton hove albion'],
+    'wolves': ['wolverhampton wanderers', 'wolves', 'wolverhampton'],
+    'bournemouth': ['afc bournemouth', 'bournemouth'],
+    'fulham': ['fulham fc', 'fulham'],
+    'crystal palace': ['crystal palace fc', 'crystal palace', 'palace'],
+    'brentford': ['brentford fc', 'brentford'],
+    'everton': ['everton fc', 'everton'],
+    'leicester': ['leicester city', 'leicester'],
+    'ipswich': ['ipswich town', 'ipswich'],
+    'southampton': ['southampton fc', 'southampton'],
 
-    // Spanish
-    'atletico madrid': ['atletico madrid', 'atlético madrid', 'atletico', 'atleti'],
+    // English - Championship
+    'leeds': ['leeds united', 'leeds', 'leeds utd'],
+    'burnley': ['burnley fc', 'burnley'],
+    'sheffield utd': ['sheffield united', 'sheffield utd', 'sheff utd'],
+    'sunderland': ['sunderland afc', 'sunderland'],
+    'middlesbrough': ['middlesbrough fc', 'middlesbrough', 'boro'],
+    'west brom': ['west bromwich albion', 'west brom', 'wba'],
+    'norwich': ['norwich city', 'norwich'],
+    'watford': ['watford fc', 'watford'],
+    'coventry': ['coventry city', 'coventry'],
+    'blackburn': ['blackburn rovers', 'blackburn'],
+    'bristol city': ['bristol city fc', 'bristol city'],
+    'swansea': ['swansea city', 'swansea'],
+    'stoke': ['stoke city', 'stoke'],
+    'hull': ['hull city', 'hull'],
+    'qpr': ['queens park rangers', 'qpr'],
+    'millwall': ['millwall fc', 'millwall'],
+    'cardiff': ['cardiff city', 'cardiff'],
+    'preston': ['preston north end', 'preston'],
+    'luton': ['luton town', 'luton'],
+    'plymouth': ['plymouth argyle', 'plymouth'],
+    'derby': ['derby county', 'derby'],
+    'portsmouth': ['portsmouth fc', 'portsmouth'],
+    'oxford': ['oxford united', 'oxford'],
+
+    // Spanish - La Liga
+    'atletico madrid': ['atletico madrid', 'atlético madrid', 'atletico', 'atleti', 'atl madrid'],
     'athletic bilbao': ['athletic club', 'athletic bilbao', 'athletic'],
     'real sociedad': ['real sociedad', 'la real', 'sociedad'],
     'real betis': ['real betis', 'betis'],
     'celta vigo': ['celta vigo', 'celta', 'rc celta', 'celta de vigo'],
     'celta': ['celta vigo', 'celta', 'rc celta', 'celta de vigo'],
+    'real madrid': ['real madrid cf', 'real madrid', 'madrid'],
+    'barcelona': ['fc barcelona', 'barcelona', 'barca', 'barça'],
+    'sevilla': ['sevilla fc', 'sevilla'],
+    'villarreal': ['villarreal cf', 'villarreal'],
+    'valencia': ['valencia cf', 'valencia'],
+    'getafe': ['getafe cf', 'getafe'],
+    'osasuna': ['ca osasuna', 'osasuna'],
+    'mallorca': ['rcd mallorca', 'mallorca'],
+    'rayo vallecano': ['rayo vallecano', 'rayo'],
+    'girona': ['girona fc', 'girona'],
+    'alaves': ['deportivo alaves', 'alaves', 'alavés'],
+    'las palmas': ['ud las palmas', 'las palmas'],
+    'espanyol': ['rcd espanyol', 'espanyol'],
+    'leganes': ['cd leganes', 'leganes', 'leganés'],
+    'valladolid': ['real valladolid', 'valladolid'],
 
-    // Italian
+    // Italian - Serie A
     'inter': ['inter milan', 'internazionale', 'inter'],
     'inter milan': ['inter milan', 'internazionale', 'inter'],
     'ac milan': ['ac milan', 'milan'],
@@ -103,28 +198,70 @@ const TEAM_ALIASES = {
     'fiorentina': ['acf fiorentina', 'fiorentina', 'viola'],
     'juventus': ['juventus fc', 'juventus', 'juve'],
     'bologna': ['bologna fc', 'bologna'],
+    'atalanta': ['atalanta bc', 'atalanta'],
+    'torino': ['torino fc', 'torino'],
+    'udinese': ['udinese calcio', 'udinese'],
+    'genoa': ['genoa cfc', 'genoa'],
+    'cagliari': ['cagliari calcio', 'cagliari'],
+    'parma': ['parma calcio', 'parma'],
+    'empoli': ['empoli fc', 'empoli'],
+    'como': ['como 1907', 'como'],
+    'verona': ['hellas verona', 'verona'],
+    'lecce': ['us lecce', 'lecce'],
+    'monza': ['ac monza', 'monza'],
+    'venezia': ['venezia fc', 'venezia'],
+
+    // German - Bundesliga
+    'bayern': ['bayern munich', 'bayern münchen', 'fc bayern', 'bayern'],
+    'bayern munich': ['bayern munich', 'bayern münchen', 'fc bayern', 'bayern'],
+    'dortmund': ['borussia dortmund', 'bvb', 'dortmund'],
+    'borussia dortmund': ['borussia dortmund', 'bvb', 'dortmund'],
+    'leverkusen': ['bayer leverkusen', 'leverkusen', 'bayer 04'],
+    'bayer leverkusen': ['bayer leverkusen', 'leverkusen', 'bayer 04'],
+    'freiburg': ['sc freiburg', 'freiburg'],
+    'frankfurt': ['eintracht frankfurt', 'frankfurt', 'sge'],
+    'eintracht frankfurt': ['eintracht frankfurt', 'frankfurt', 'sge'],
+    'stuttgart': ['vfb stuttgart', 'stuttgart'],
+    'wolfsburg': ['vfl wolfsburg', 'wolfsburg'],
+    'gladbach': ['borussia monchengladbach', 'gladbach', 'monchengladbach', 'mgladbach'],
+    'monchengladbach': ['borussia monchengladbach', 'gladbach', 'monchengladbach'],
+    'hoffenheim': ['tsg hoffenheim', 'hoffenheim'],
+    'mainz': ['mainz 05', 'mainz'],
+    'augsburg': ['fc augsburg', 'augsburg'],
+    'werder bremen': ['werder bremen', 'bremen'],
+    'bremen': ['werder bremen', 'bremen'],
+    'union berlin': ['union berlin', '1 fc union berlin'],
+    'bochum': ['vfl bochum', 'bochum'],
+    'heidenheim': ['1 fc heidenheim', 'heidenheim'],
+    'st pauli': ['fc st pauli', 'st pauli', 'st. pauli'],
+    'holstein kiel': ['holstein kiel', 'kiel'],
+
+    // French - Ligue 1
+    'psg': ['paris saint-germain', 'paris saint germain', 'psg', 'paris sg', 'paris'],
+    'paris saint germain': ['paris saint-germain', 'paris saint germain', 'psg', 'paris sg'],
+    'marseille': ['olympique marseille', 'om', 'marseille'],
+    'lyon': ['olympique lyonnais', 'olympique lyon', 'lyon', 'ol'],
+    'monaco': ['as monaco', 'monaco'],
+    'lille': ['losc lille', 'lille', 'losc'],
+    'nice': ['ogc nice', 'nice'],
+    'lens': ['rc lens', 'lens'],
+    'rennes': ['stade rennais', 'rennes'],
+    'strasbourg': ['rc strasbourg', 'strasbourg'],
+    'nantes': ['fc nantes', 'nantes'],
+    'toulouse': ['toulouse fc', 'toulouse'],
+    'montpellier': ['montpellier hsc', 'montpellier'],
+    'brest': ['stade brest', 'brest'],
+    'reims': ['stade reims', 'reims'],
+    'le havre': ['le havre ac', 'le havre'],
+    'auxerre': ['aj auxerre', 'auxerre'],
+    'angers': ['angers sco', 'angers'],
+    'st etienne': ['as saint-etienne', 'saint etienne', 'st etienne'],
 
     // Portuguese
     'sporting': ['sporting cp', 'sporting lisbon', 'sporting'],
     'benfica': ['sl benfica', 'benfica'],
     'porto': ['fc porto', 'porto'],
     'braga': ['sc braga', 'sporting braga', 'braga'],
-
-    // French
-    'psg': ['paris saint-germain', 'paris saint germain', 'psg', 'paris sg'],
-    'marseille': ['olympique marseille', 'om', 'marseille'],
-    'lyon': ['olympique lyonnais', 'olympique lyon', 'lyon', 'ol'],
-    'monaco': ['as monaco', 'monaco'],
-    'lille': ['losc lille', 'lille', 'losc'],
-    'nice': ['ogc nice', 'nice'],
-
-    // German
-    'bayern': ['bayern munich', 'bayern münchen', 'fc bayern', 'bayern'],
-    'dortmund': ['borussia dortmund', 'bvb', 'dortmund'],
-    'leverkusen': ['bayer leverkusen', 'leverkusen', 'bayer 04'],
-    'freiburg': ['sc freiburg', 'freiburg'],
-    'frankfurt': ['eintracht frankfurt', 'frankfurt', 'sge'],
-    'stuttgart': ['vfb stuttgart', 'stuttgart'],
 
     // Belgian
     'club brugge': ['club brugge', 'club bruges', 'brugge'],
@@ -168,7 +305,6 @@ const TEAM_ALIASES = {
     'go ahead eagles': ['go ahead eagles', 'go ahead'],
     'sturm graz': ['sturm graz', 'sturm'],
     'utrecht': ['fc utrecht', 'utrecht'],
-    'feyenoord': ['feyenoord rotterdam', 'feyenoord'],
 };
 
 // Cache for IPTV channels
