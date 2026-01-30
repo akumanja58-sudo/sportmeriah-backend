@@ -10,12 +10,13 @@ app.use(express.json());
 
 // Routes
 const fixturesRoutes = require('./routes/fixtures');
-const nbaRoutes = require('./routes/nba');
+const nbaRoutes = require('./routes/basketball');
 const streamProxy = require('./routes/streamProxy');
 
 app.use('/api/fixtures', fixturesRoutes);
 app.use('/api/basketball', nbaRoutes);
 app.use('/api/stream', streamProxy);
+
 
 // Health check
 app.get('/', (req, res) => {
