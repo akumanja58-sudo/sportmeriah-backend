@@ -3,11 +3,11 @@ const router = express.Router();
 const https = require('https');
 const http = require('http');
 
-// IPTV Config - SphereIPTV (updated)
+// IPTV Config - SphereIPTV
 const IPTV_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
 const IPTV_USER = process.env.IPTV_USER || '8297117';
 const IPTV_PASS = process.env.IPTV_PASS || '4501185';
-const IPTV_PROTOCOL = process.env.IPTV_PROTOCOL || 'https'; // SphereIPTV uses HTTPS
+const IPTV_PROTOCOL = process.env.IPTV_PROTOCOL || 'https';
 
 // Browser-like headers
 const BROWSER_HEADERS = {
@@ -16,9 +16,6 @@ const BROWSER_HEADERS = {
     'Accept-Language': 'en-US,en;q=0.9',
     'Accept-Encoding': 'identity',
     'Connection': 'keep-alive',
-    'Sec-Fetch-Dest': 'empty',
-    'Sec-Fetch-Mode': 'cors',
-    'Sec-Fetch-Site': 'cross-site',
 };
 
 // ========== PROXY M3U8 PLAYLIST ==========
@@ -34,12 +31,15 @@ router.get('/:streamId.m3u8', async (req, res) => {
     console.log(`[Proxy] Fetching m3u8: ${iptvUrl}`);
 
     try {
-        const response = await fetchWithRedirect(iptvUrl);
+        // Fetch and follow redirects, get final URL
+        const { response, finalUrl } = await fetchWithRedirectAndUrl(iptvUrl);
 
         if (response.statusCode !== 200) {
             console.error(`[Proxy] IPTV returned status: ${response.statusCode}`);
             return res.status(response.statusCode).send('Stream not available');
         }
+
+        console.log(`[Proxy] Final URL after redirects: ${finalUrl.substring(0, 100)}...`);
 
         // Set headers for m3u8
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
@@ -57,6 +57,19 @@ router.get('/:streamId.m3u8', async (req, res) => {
         response.on('end', () => {
             const proxyBase = `/api/stream/`;
 
+            // Get base URL from final redirected URL
+            let baseUrl;
+            try {
+                const urlObj = new URL(finalUrl);
+                const pathParts = urlObj.pathname.split('/');
+                pathParts.pop(); // Remove filename
+                baseUrl = `${urlObj.protocol}//${urlObj.host}${pathParts.join('/')}`;
+            } catch (e) {
+                baseUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}`;
+            }
+
+            console.log(`[Proxy] Base URL for segments: ${baseUrl}`);
+
             let modifiedData = data;
 
             // Process each line
@@ -72,14 +85,19 @@ router.get('/:streamId.m3u8', async (req, res) => {
                     const trimmedLine = line.trim();
 
                     if (trimmedLine.startsWith('http')) {
-                        // Already absolute URL
+                        // Already absolute URL - use as-is (includes token)
                         fullUrl = trimmedLine;
                     } else if (trimmedLine.startsWith('/')) {
-                        // Absolute path - use server root
-                        fullUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}${trimmedLine}`;
+                        // Absolute path - use the redirected host
+                        try {
+                            const urlObj = new URL(finalUrl);
+                            fullUrl = `${urlObj.protocol}//${urlObj.host}${trimmedLine}`;
+                        } catch (e) {
+                            fullUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}${trimmedLine}`;
+                        }
                     } else {
-                        // Relative path
-                        fullUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${trimmedLine}`;
+                        // Relative path - resolve from base URL (this preserves the token path!)
+                        fullUrl = `${baseUrl}/${trimmedLine}`;
                     }
 
                     return `${proxyBase}segment?url=${encodeURIComponent(fullUrl)}`;
@@ -105,10 +123,10 @@ router.get('/segment', async (req, res) => {
         return res.status(400).json({ error: 'URL required' });
     }
 
-    console.log(`[Proxy] Fetching segment: ${url.substring(0, 80)}...`);
+    console.log(`[Proxy] Fetching segment: ${url.substring(0, 100)}...`);
 
     try {
-        const response = await fetchWithRedirect(url);
+        const { response } = await fetchWithRedirectAndUrl(url);
 
         if (response.statusCode !== 200) {
             console.error(`[Proxy] Segment returned status: ${response.statusCode}`);
@@ -138,8 +156,8 @@ router.options('*', (req, res) => {
     res.sendStatus(200);
 });
 
-// ========== HELPER: Fetch with redirect ==========
-function fetchWithRedirect(url, redirectCount = 0, lastRedirectHost = null) {
+// ========== HELPER: Fetch with redirect and return final URL ==========
+function fetchWithRedirectAndUrl(url, redirectCount = 0) {
     return new Promise((resolve, reject) => {
         if (redirectCount > 10) {
             return reject(new Error('Too many redirects'));
@@ -148,7 +166,7 @@ function fetchWithRedirect(url, redirectCount = 0, lastRedirectHost = null) {
         const isHttps = url.startsWith('https');
         const protocol = isHttps ? https : http;
 
-        // Parse URL to get host for Referer
+        // Parse URL to get host
         let urlHost;
         try {
             urlHost = new URL(url).host;
@@ -159,8 +177,6 @@ function fetchWithRedirect(url, redirectCount = 0, lastRedirectHost = null) {
         const requestHeaders = {
             ...BROWSER_HEADERS,
             'Host': urlHost,
-            'Origin': `${IPTV_PROTOCOL}://${IPTV_SERVER}`,
-            'Referer': lastRedirectHost ? `${IPTV_PROTOCOL}://${lastRedirectHost}/` : `${IPTV_PROTOCOL}://${IPTV_SERVER}/`,
         };
 
         const request = protocol.get(url, {
@@ -177,12 +193,14 @@ function fetchWithRedirect(url, redirectCount = 0, lastRedirectHost = null) {
                     redirectUrl = `${urlObj.protocol}//${urlObj.host}${redirectUrl}`;
                 }
 
-                console.log(`[Proxy] Redirect ${response.statusCode} to: ${redirectUrl.substring(0, 80)}...`);
-                return fetchWithRedirect(redirectUrl, redirectCount + 1, urlHost)
+                console.log(`[Proxy] Redirect ${response.statusCode} to: ${redirectUrl.substring(0, 100)}...`);
+                return fetchWithRedirectAndUrl(redirectUrl, redirectCount + 1)
                     .then(resolve)
                     .catch(reject);
             }
-            resolve(response);
+
+            // Return both response and final URL
+            resolve({ response, finalUrl: url });
         });
 
         request.on('error', (err) => {
