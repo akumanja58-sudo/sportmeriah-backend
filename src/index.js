@@ -2,37 +2,41 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const matchesRoutes = require('./routes/matches');
-const streamsRoutes = require('./routes/streams');
-const footballRoutes = require('./routes/football');
-const fixturesRoutes = require('./routes/fixtures');
-const basketballRoutes = require('./routes/basketball'); // Basketball routes
-
 const app = express();
-const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api/matches', matchesRoutes);
-app.use('/api/streams', streamsRoutes);
-app.use('/api/football', footballRoutes);
+const fixturesRoutes = require('./routes/fixtures');
+const nbaRoutes = require('./routes/nba');
+const streamProxy = require('./routes/streamProxy');
+
 app.use('/api/fixtures', fixturesRoutes);
-app.use('/api/basketball', basketballRoutes); // Basketball endpoint
+app.use('/api/basketball', nbaRoutes);
+app.use('/api/stream', streamProxy);
 
 // Health check
 app.get('/', (req, res) => {
     res.json({
-        status: 'SportMeriah API is running!',
+        status: 'ok',
+        message: 'SportMeriah API',
         endpoints: {
-            football: '/api/matches',
+            fixtures: '/api/fixtures/today',
             basketball: '/api/basketball',
-            streams: '/api/streams'
+            stream: '/api/stream/:streamId.m3u8'
         }
     });
 });
 
+// Error handling
+app.use((err, req, res, next) => {
+    console.error('Server Error:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
+});
+
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
