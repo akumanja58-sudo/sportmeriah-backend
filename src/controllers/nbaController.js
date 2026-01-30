@@ -4,52 +4,49 @@ const axios = require('axios');
 const API_BASKETBALL_KEY = process.env.FOOTBALL_API_KEY;
 const API_BASKETBALL_URL = 'https://v1.basketball.api-sports.io';
 
-// IPTV configuration
-const IPTV_SERVER = process.env.IPTV_SERVER;
-const IPTV_USER = process.env.IPTV_USER;
-const IPTV_PASS = process.env.IPTV_PASS;
+// IPTV configuration - SphereIPTV
+const IPTV_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
+const IPTV_USER = process.env.IPTV_USER || '8297117';
+const IPTV_PASS = process.env.IPTV_PASS || '4501185';
+const IPTV_PROTOCOL = process.env.IPTV_PROTOCOL || 'https';
 
-// Basketball IPTV Categories
+// Basketball IPTV Categories - SphereIPTV
 const BASKETBALL_CATEGORIES = [
-    { id: '605', name: 'US NBA PPV', priority: 1 },
-    { id: '2094', name: 'US NBA PASS PPV 8K', priority: 1 },
-    { id: '2098', name: 'US NBA PASS PPV 8K VIP', priority: 1 },
-    { id: '689', name: 'US ESPN PPV', priority: 2 },
-    { id: '599', name: 'US TNT PPV', priority: 2 },
+    { id: '135', name: 'SPORTS - NBA', priority: 1 },
 ];
 
 // NBA Team name variations for matching
 const TEAM_ALIASES = {
-    'los angeles lakers': ['lakers', 'la lakers', 'l.a. lakers'],
-    'los angeles clippers': ['clippers', 'la clippers', 'l.a. clippers'],
+    'los angeles lakers': ['lakers', 'la lakers', 'l.a. lakers', 'lal'],
+    'los angeles clippers': ['clippers', 'la clippers', 'l.a. clippers', 'lac'],
     'golden state warriors': ['warriors', 'golden state', 'gsw'],
-    'new york knicks': ['knicks', 'ny knicks'],
-    'brooklyn nets': ['nets', 'brooklyn'],
-    'boston celtics': ['celtics', 'boston'],
-    'miami heat': ['heat', 'miami'],
-    'chicago bulls': ['bulls', 'chicago'],
-    'philadelphia 76ers': ['76ers', 'sixers', 'philadelphia', 'philly'],
-    'toronto raptors': ['raptors', 'toronto'],
-    'san antonio spurs': ['spurs', 'san antonio'],
-    'dallas mavericks': ['mavericks', 'mavs', 'dallas'],
-    'houston rockets': ['rockets', 'houston'],
-    'denver nuggets': ['nuggets', 'denver'],
-    'phoenix suns': ['suns', 'phoenix'],
-    'milwaukee bucks': ['bucks', 'milwaukee'],
-    'cleveland cavaliers': ['cavaliers', 'cavs', 'cleveland'],
-    'atlanta hawks': ['hawks', 'atlanta'],
-    'sacramento kings': ['kings', 'sacramento'],
-    'portland trail blazers': ['trail blazers', 'blazers', 'portland'],
+    'new york knicks': ['knicks', 'ny knicks', 'nyk'],
+    'brooklyn nets': ['nets', 'brooklyn', 'bkn'],
+    'boston celtics': ['celtics', 'boston', 'bos'],
+    'miami heat': ['heat', 'miami', 'mia'],
+    'chicago bulls': ['bulls', 'chicago', 'chi'],
+    'philadelphia 76ers': ['76ers', 'sixers', 'philadelphia', 'philly', 'phi'],
+    'toronto raptors': ['raptors', 'toronto', 'tor'],
+    'san antonio spurs': ['spurs', 'san antonio', 'sas'],
+    'dallas mavericks': ['mavericks', 'mavs', 'dallas', 'dal'],
+    'houston rockets': ['rockets', 'houston', 'hou'],
+    'denver nuggets': ['nuggets', 'denver', 'den'],
+    'phoenix suns': ['suns', 'phoenix', 'phx'],
+    'milwaukee bucks': ['bucks', 'milwaukee', 'mil'],
+    'cleveland cavaliers': ['cavaliers', 'cavs', 'cleveland', 'cle'],
+    'atlanta hawks': ['hawks', 'atlanta', 'atl'],
+    'sacramento kings': ['kings', 'sacramento', 'sac'],
+    'portland trail blazers': ['trail blazers', 'blazers', 'portland', 'por'],
     'oklahoma city thunder': ['thunder', 'okc', 'oklahoma city'],
-    'minnesota timberwolves': ['timberwolves', 'wolves', 'minnesota'],
-    'utah jazz': ['jazz', 'utah'],
-    'new orleans pelicans': ['pelicans', 'new orleans'],
-    'memphis grizzlies': ['grizzlies', 'memphis'],
-    'detroit pistons': ['pistons', 'detroit'],
-    'indiana pacers': ['pacers', 'indiana'],
-    'orlando magic': ['magic', 'orlando'],
-    'charlotte hornets': ['hornets', 'charlotte'],
-    'washington wizards': ['wizards', 'washington'],
+    'minnesota timberwolves': ['timberwolves', 'wolves', 'minnesota', 'min'],
+    'utah jazz': ['jazz', 'utah', 'uta'],
+    'new orleans pelicans': ['pelicans', 'new orleans', 'nop'],
+    'memphis grizzlies': ['grizzlies', 'memphis', 'mem'],
+    'detroit pistons': ['pistons', 'detroit', 'det'],
+    'indiana pacers': ['pacers', 'indiana', 'ind'],
+    'orlando magic': ['magic', 'orlando', 'orl'],
+    'charlotte hornets': ['hornets', 'charlotte', 'cha'],
+    'washington wizards': ['wizards', 'washington', 'wsh', 'was'],
 };
 
 // Get all basketball matches with streams
@@ -167,13 +164,13 @@ const fetchNBAFixtures = async () => {
     }
 };
 
-// Fetch IPTV channels
+// Fetch IPTV channels - SphereIPTV
 const fetchIPTVChannels = async () => {
     const allChannels = [];
 
     for (const category of BASKETBALL_CATEGORIES) {
         try {
-            const response = await axios.get(`${IPTV_SERVER}/player_api.php`, {
+            const response = await axios.get(`${IPTV_PROTOCOL}://${IPTV_SERVER}/player_api.php`, {
                 params: {
                     username: IPTV_USER,
                     password: IPTV_PASS,
@@ -225,6 +222,7 @@ const matchFixturesWithStreams = (fixtures, channels) => {
 };
 
 // Find matching channel for a fixture
+// SphereIPTV format: "USA Real NBA 01: TOR Raptors VS ORL Magic ( ESPN Feed ) @ 7:30 PM"
 const findMatchingChannel = (fixture, channels) => {
     const homeTeam = normalizeTeamName(fixture.homeTeam.name);
     const awayTeam = normalizeTeamName(fixture.awayTeam.name);
@@ -404,6 +402,11 @@ const getTeamAliases = (teamName) => {
 // Helper: Check if channel should be excluded
 const isExcludedChannel = (name) => {
     if (!name) return true;
+
+    // Exclude empty channels like "USA Real NBA 10: "
+    const trimmedName = name.replace(/USA Real NBA \d+:\s*/, '').trim();
+    if (!trimmedName) return true;
+
     const upper = name.toUpperCase();
     const excludeKeywords = ['#####', '######', 'NO EVENT', 'OFF AIR', 'PLACEHOLDER'];
     return excludeKeywords.some(kw => upper.includes(kw));
