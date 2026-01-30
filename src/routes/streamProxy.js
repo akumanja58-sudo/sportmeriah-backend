@@ -3,10 +3,11 @@ const router = express.Router();
 const https = require('https');
 const http = require('http');
 
-// IPTV Config
-const IPTV_SERVER = 'cf.business-cdn-8k.ru';
-const IPTV_USER = process.env.IPTV_USER || 'd6bc5a36b788';
-const IPTV_PASS = process.env.IPTV_PASS || '884f0649bc';
+// IPTV Config - SphereIPTV (updated)
+const IPTV_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
+const IPTV_USER = process.env.IPTV_USER || '8297117';
+const IPTV_PASS = process.env.IPTV_PASS || '4501185';
+const IPTV_PROTOCOL = process.env.IPTV_PROTOCOL || 'https'; // SphereIPTV uses HTTPS
 
 // Browser-like headers
 const BROWSER_HEADERS = {
@@ -28,7 +29,7 @@ router.get('/:streamId.m3u8', async (req, res) => {
         return res.status(400).json({ error: 'Stream ID required' });
     }
 
-    const iptvUrl = `http://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${streamId}.m3u8`;
+    const iptvUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${streamId}.m3u8`;
 
     console.log(`[Proxy] Fetching m3u8: ${iptvUrl}`);
 
@@ -75,10 +76,10 @@ router.get('/:streamId.m3u8', async (req, res) => {
                         fullUrl = trimmedLine;
                     } else if (trimmedLine.startsWith('/')) {
                         // Absolute path - use server root
-                        fullUrl = `http://${IPTV_SERVER}${trimmedLine}`;
+                        fullUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}${trimmedLine}`;
                     } else {
                         // Relative path
-                        fullUrl = `http://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${trimmedLine}`;
+                        fullUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${trimmedLine}`;
                     }
 
                     return `${proxyBase}segment?url=${encodeURIComponent(fullUrl)}`;
@@ -158,8 +159,8 @@ function fetchWithRedirect(url, redirectCount = 0, lastRedirectHost = null) {
         const requestHeaders = {
             ...BROWSER_HEADERS,
             'Host': urlHost,
-            'Origin': `http://${IPTV_SERVER}`,
-            'Referer': lastRedirectHost ? `http://${lastRedirectHost}/` : `http://${IPTV_SERVER}/`,
+            'Origin': `${IPTV_PROTOCOL}://${IPTV_SERVER}`,
+            'Referer': lastRedirectHost ? `${IPTV_PROTOCOL}://${lastRedirectHost}/` : `${IPTV_PROTOCOL}://${IPTV_SERVER}/`,
         };
 
         const request = protocol.get(url, {
