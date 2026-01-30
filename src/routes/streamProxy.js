@@ -8,6 +8,18 @@ const IPTV_SERVER = 'cf.business-cdn-8k.ru';
 const IPTV_USER = process.env.IPTV_USER || 'd6bc5a36b788';
 const IPTV_PASS = process.env.IPTV_PASS || '884f0649bc';
 
+// Browser-like headers
+const BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': '*/*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'identity',
+    'Connection': 'keep-alive',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'cross-site',
+};
+
 // ========== PROXY M3U8 PLAYLIST ==========
 router.get('/:streamId.m3u8', async (req, res) => {
     const { streamId } = req.params;
@@ -16,7 +28,7 @@ router.get('/:streamId.m3u8', async (req, res) => {
         return res.status(400).json({ error: 'Stream ID required' });
     }
 
-    const iptvUrl = `https://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${streamId}.m3u8`;
+    const iptvUrl = `http://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${streamId}.m3u8`;
 
     console.log(`[Proxy] Fetching m3u8: ${iptvUrl}`);
 
@@ -44,10 +56,6 @@ router.get('/:streamId.m3u8', async (req, res) => {
         response.on('end', () => {
             const proxyBase = `/api/stream/`;
 
-            // Get the base URL from the final response (after redirects)
-            // We'll use the original IPTV base for constructing full URLs
-            const baseUrl = `https://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}`;
-
             let modifiedData = data;
 
             // Process each line
@@ -60,16 +68,17 @@ router.get('/:streamId.m3u8', async (req, res) => {
                 // Handle .ts and .m3u8 files
                 if (line.includes('.ts') || line.includes('.m3u8')) {
                     let fullUrl;
+                    const trimmedLine = line.trim();
 
-                    if (line.startsWith('http')) {
+                    if (trimmedLine.startsWith('http')) {
                         // Already absolute URL
-                        fullUrl = line.trim();
-                    } else if (line.startsWith('/')) {
+                        fullUrl = trimmedLine;
+                    } else if (trimmedLine.startsWith('/')) {
                         // Absolute path - use server root
-                        fullUrl = `https://${IPTV_SERVER}${line.trim()}`;
+                        fullUrl = `http://${IPTV_SERVER}${trimmedLine}`;
                     } else {
                         // Relative path
-                        fullUrl = `${baseUrl}/${line.trim()}`;
+                        fullUrl = `http://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${trimmedLine}`;
                     }
 
                     return `${proxyBase}segment?url=${encodeURIComponent(fullUrl)}`;
@@ -129,20 +138,33 @@ router.options('*', (req, res) => {
 });
 
 // ========== HELPER: Fetch with redirect ==========
-function fetchWithRedirect(url, redirectCount = 0) {
+function fetchWithRedirect(url, redirectCount = 0, lastRedirectHost = null) {
     return new Promise((resolve, reject) => {
-        if (redirectCount > 5) {
+        if (redirectCount > 10) {
             return reject(new Error('Too many redirects'));
         }
 
-        const protocol = url.startsWith('https') ? https : http;
+        const isHttps = url.startsWith('https');
+        const protocol = isHttps ? https : http;
+
+        // Parse URL to get host for Referer
+        let urlHost;
+        try {
+            urlHost = new URL(url).host;
+        } catch (e) {
+            urlHost = IPTV_SERVER;
+        }
+
+        const requestHeaders = {
+            ...BROWSER_HEADERS,
+            'Host': urlHost,
+            'Origin': `http://${IPTV_SERVER}`,
+            'Referer': lastRedirectHost ? `http://${lastRedirectHost}/` : `http://${IPTV_SERVER}/`,
+        };
 
         const request = protocol.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': '*/*',
-                'Referer': `https://${IPTV_SERVER}/`,
-            }
+            headers: requestHeaders,
+            timeout: 15000,
         }, (response) => {
             // Handle redirects
             if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
@@ -155,15 +177,19 @@ function fetchWithRedirect(url, redirectCount = 0) {
                 }
 
                 console.log(`[Proxy] Redirect ${response.statusCode} to: ${redirectUrl.substring(0, 80)}...`);
-                return fetchWithRedirect(redirectUrl, redirectCount + 1)
+                return fetchWithRedirect(redirectUrl, redirectCount + 1, urlHost)
                     .then(resolve)
                     .catch(reject);
             }
             resolve(response);
         });
 
-        request.on('error', reject);
-        request.setTimeout(15000, () => {
+        request.on('error', (err) => {
+            console.error(`[Proxy] Request error: ${err.message}`);
+            reject(err);
+        });
+
+        request.on('timeout', () => {
             request.destroy();
             reject(new Error('Request timeout'));
         });
