@@ -11,50 +11,16 @@ const IPTV_PASS = process.env.IPTV_PASS || '884f0649bc';
 // ========== PROXY M3U8 PLAYLIST ==========
 router.get('/:streamId.m3u8', async (req, res) => {
     const { streamId } = req.params;
-    
+
     if (!streamId) {
         return res.status(400).json({ error: 'Stream ID required' });
     }
 
     const iptvUrl = `https://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${streamId}.m3u8`;
-    
+
     console.log(`[Proxy] Fetching m3u8: ${iptvUrl}`);
 
     try {
-        // Follow redirects manually
-        const fetchWithRedirect = (url, redirectCount = 0) => {
-            return new Promise((resolve, reject) => {
-                if (redirectCount > 5) {
-                    return reject(new Error('Too many redirects'));
-                }
-
-                const protocol = url.startsWith('https') ? https : http;
-                
-                const request = protocol.get(url, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept': '*/*',
-                        'Referer': `https://${IPTV_SERVER}/`,
-                    }
-                }, (response) => {
-                    // Handle redirects
-                    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-                        console.log(`[Proxy] Redirect to: ${response.headers.location}`);
-                        return fetchWithRedirect(response.headers.location, redirectCount + 1)
-                            .then(resolve)
-                            .catch(reject);
-                    }
-                    resolve(response);
-                });
-
-                request.on('error', reject);
-                request.setTimeout(10000, () => {
-                    request.destroy();
-                    reject(new Error('Request timeout'));
-                });
-            });
-        };
-
         const response = await fetchWithRedirect(iptvUrl);
 
         if (response.statusCode !== 200) {
@@ -76,29 +42,41 @@ router.get('/:streamId.m3u8', async (req, res) => {
         });
 
         response.on('end', () => {
-            // Replace relative URLs with absolute proxy URLs
-            // This handles .ts segment files
-            const baseUrl = `https://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/`;
             const proxyBase = `/api/stream/`;
-            
-            // Replace segment URLs to go through our proxy
-            let modifiedData = data;
-            
-            // If there are relative .ts URLs, make them absolute through proxy
-            modifiedData = modifiedData.replace(/^(?!#)(.+\.ts.*)$/gm, (match) => {
-                if (match.startsWith('http')) {
-                    // Already absolute URL - proxy it
-                    return `${proxyBase}segment?url=${encodeURIComponent(match)}`;
-                } else {
-                    // Relative URL
-                    return `${proxyBase}segment?url=${encodeURIComponent(baseUrl + match)}`;
-                }
-            });
 
-            // Also handle any absolute URLs in the playlist
-            modifiedData = modifiedData.replace(/(https?:\/\/[^\s]+\.ts[^\s]*)/g, (match) => {
-                return `${proxyBase}segment?url=${encodeURIComponent(match)}`;
-            });
+            // Get the base URL from the final response (after redirects)
+            // We'll use the original IPTV base for constructing full URLs
+            const baseUrl = `https://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}`;
+
+            let modifiedData = data;
+
+            // Process each line
+            modifiedData = modifiedData.split('\n').map(line => {
+                // Skip comments/tags
+                if (line.startsWith('#') || line.trim() === '') {
+                    return line;
+                }
+
+                // Handle .ts and .m3u8 files
+                if (line.includes('.ts') || line.includes('.m3u8')) {
+                    let fullUrl;
+
+                    if (line.startsWith('http')) {
+                        // Already absolute URL
+                        fullUrl = line.trim();
+                    } else if (line.startsWith('/')) {
+                        // Absolute path - use server root
+                        fullUrl = `https://${IPTV_SERVER}${line.trim()}`;
+                    } else {
+                        // Relative path
+                        fullUrl = `${baseUrl}/${line.trim()}`;
+                    }
+
+                    return `${proxyBase}segment?url=${encodeURIComponent(fullUrl)}`;
+                }
+
+                return line;
+            }).join('\n');
 
             res.send(modifiedData);
         });
@@ -112,53 +90,24 @@ router.get('/:streamId.m3u8', async (req, res) => {
 // ========== PROXY TS SEGMENTS ==========
 router.get('/segment', async (req, res) => {
     const { url } = req.query;
-    
+
     if (!url) {
         return res.status(400).json({ error: 'URL required' });
     }
 
-    console.log(`[Proxy] Fetching segment: ${url.substring(0, 100)}...`);
+    console.log(`[Proxy] Fetching segment: ${url.substring(0, 80)}...`);
 
     try {
-        const fetchWithRedirect = (targetUrl, redirectCount = 0) => {
-            return new Promise((resolve, reject) => {
-                if (redirectCount > 5) {
-                    return reject(new Error('Too many redirects'));
-                }
-
-                const protocol = targetUrl.startsWith('https') ? https : http;
-                
-                const request = protocol.get(targetUrl, {
-                    headers: {
-                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                        'Accept': '*/*',
-                        'Referer': `https://${IPTV_SERVER}/`,
-                    }
-                }, (response) => {
-                    if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-                        return fetchWithRedirect(response.headers.location, redirectCount + 1)
-                            .then(resolve)
-                            .catch(reject);
-                    }
-                    resolve(response);
-                });
-
-                request.on('error', reject);
-                request.setTimeout(30000, () => {
-                    request.destroy();
-                    reject(new Error('Request timeout'));
-                });
-            });
-        };
-
         const response = await fetchWithRedirect(url);
 
         if (response.statusCode !== 200) {
+            console.error(`[Proxy] Segment returned status: ${response.statusCode}`);
             return res.status(response.statusCode).send('Segment not available');
         }
 
         // Set headers for video segment
-        res.setHeader('Content-Type', 'video/mp2t');
+        const contentType = response.headers['content-type'] || 'video/mp2t';
+        res.setHeader('Content-Type', contentType);
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'public, max-age=3600');
 
@@ -178,5 +127,47 @@ router.options('*', (req, res) => {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.sendStatus(200);
 });
+
+// ========== HELPER: Fetch with redirect ==========
+function fetchWithRedirect(url, redirectCount = 0) {
+    return new Promise((resolve, reject) => {
+        if (redirectCount > 5) {
+            return reject(new Error('Too many redirects'));
+        }
+
+        const protocol = url.startsWith('https') ? https : http;
+
+        const request = protocol.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': '*/*',
+                'Referer': `https://${IPTV_SERVER}/`,
+            }
+        }, (response) => {
+            // Handle redirects
+            if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+                let redirectUrl = response.headers.location;
+
+                // Handle relative redirects
+                if (!redirectUrl.startsWith('http')) {
+                    const urlObj = new URL(url);
+                    redirectUrl = `${urlObj.protocol}//${urlObj.host}${redirectUrl}`;
+                }
+
+                console.log(`[Proxy] Redirect ${response.statusCode} to: ${redirectUrl.substring(0, 80)}...`);
+                return fetchWithRedirect(redirectUrl, redirectCount + 1)
+                    .then(resolve)
+                    .catch(reject);
+            }
+            resolve(response);
+        });
+
+        request.on('error', reject);
+        request.setTimeout(15000, () => {
+            request.destroy();
+            reject(new Error('Request timeout'));
+        });
+    });
+}
 
 module.exports = router;
