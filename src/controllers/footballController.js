@@ -4,26 +4,15 @@ const axios = require('axios');
 const API_SPORTS_KEY = process.env.FOOTBALL_API_KEY;
 const API_SPORTS_URL = 'https://v3.football.api-sports.io';
 
-// IPTV configuration
-const IPTV_SERVER = process.env.IPTV_SERVER;
-const IPTV_USER = process.env.IPTV_USER;
-const IPTV_PASS = process.env.IPTV_PASS;
+// IPTV configuration - SphereIPTV
+const IPTV_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
+const IPTV_USER = process.env.IPTV_USER || '8297117';
+const IPTV_PASS = process.env.IPTV_PASS || '4501185';
+const IPTV_PROTOCOL = process.env.IPTV_PROTOCOL || 'https';
 
-// Football IPTV Categories
+// Football IPTV Categories - SphereIPTV
 const FOOTBALL_CATEGORIES = [
-    { id: '952', name: 'UK LIVE FOOTBALL PPV', priority: 1 },
-    { id: '755', name: 'UK EPL PREMIER LEAGUE PPV', priority: 2 },
-    { id: '1865', name: 'UK EPL PREMIER LEAGUE PPV VIP', priority: 2 },
-    { id: '921', name: 'UK UEFA PPV', priority: 3 },
-    { id: '1497', name: 'US UEFA PPV', priority: 3 },
-    { id: '553', name: 'ES M+ LIGA DE CAMPEONES VIP', priority: 3 },
-    { id: '870', name: 'ES M+ LALIGA VIP', priority: 4 },
-    { id: '552', name: 'ES DAZN LALIGA VIP', priority: 4 },
-    { id: '2045', name: 'ES LALIGA+ PPV', priority: 4 },
-    { id: '681', name: 'IT SERIE A/B/C', priority: 5 },
-    { id: '590', name: 'IT DAZN PPV', priority: 5 },
-    { id: '607', name: 'US MLS PPV', priority: 6 },
-    { id: '1882', name: 'US FIFA+ PPV', priority: 7 },
+    { id: '171', name: 'SPORTS - SOCCER', priority: 1 },
 ];
 
 // Popular leagues to fetch (to limit API calls)
@@ -42,6 +31,10 @@ const POPULAR_LEAGUES = [
     137,  // Coppa Italia
     529,  // Super Cup
     531,  // UEFA Super Cup
+    253,  // MLS
+    262,  // Liga MX
+    94,   // Primeira Liga (Portugal)
+    307,  // Saudi Pro League
 ];
 
 // Team name variations for matching
@@ -63,6 +56,10 @@ const TEAM_ALIASES = {
     'inter': ['inter milan', 'internazionale'],
     'ac milan': ['milan'],
     'rb leipzig': ['leipzig'],
+    'deportivo alaves': ['deportivo alavés', 'alaves', 'alavés'],
+    'vitoria guimaraes': ['vitória guimarães', 'guimaraes', 'guimarães'],
+    'al nassr': ['al-nassr', 'nassr'],
+    'pumas unam': ['pumas', 'unam'],
 };
 
 // Get all football matches with streams
@@ -180,13 +177,13 @@ const fetchFixtures = async () => {
     }
 };
 
-// Fetch IPTV channels
+// Fetch IPTV channels - SphereIPTV
 const fetchIPTVChannels = async () => {
     const allChannels = [];
 
     for (const category of FOOTBALL_CATEGORIES) {
         try {
-            const response = await axios.get(`${IPTV_SERVER}/player_api.php`, {
+            const response = await axios.get(`${IPTV_PROTOCOL}://${IPTV_SERVER}/player_api.php`, {
                 params: {
                     username: IPTV_USER,
                     password: IPTV_PASS,
@@ -237,7 +234,8 @@ const matchFixturesWithStreams = (fixtures, channels) => {
     });
 };
 
-// Find matching channel for a fixture
+// Find matching channel for a fixture - Updated for SphereIPTV format
+// Format: "USA Soccer01: Spain - La Liga : Espanyol vs Deportivo Alavés @ 03:00pm EST"
 const findMatchingChannel = (fixture, channels) => {
     const homeTeam = normalizeTeamName(fixture.homeTeam.name);
     const awayTeam = normalizeTeamName(fixture.awayTeam.name);
@@ -416,6 +414,9 @@ const getTeamAliases = (teamName) => {
 // Helper: Check if channel should be excluded
 const isExcludedChannel = (name) => {
     if (!name) return true;
+    const trimmedName = name.replace(/USA Soccer\d+:\s*/, '').trim();
+    if (!trimmedName) return true; // Exclude empty channels like "USA Soccer08: "
+
     const upper = name.toUpperCase();
     const excludeKeywords = ['#####', '######', 'NO EVENT', 'OFF AIR', 'PLACEHOLDER'];
     return excludeKeywords.some(kw => upper.includes(kw));
