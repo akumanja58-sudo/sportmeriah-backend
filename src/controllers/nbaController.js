@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 // API Sports configuration
-const API_BASKETBALL_KEY = process.env.API_BASKETBALL_KEY;
+const API_BASKETBALL_KEY = process.env.FOOTBALL_API_KEY;
 const API_BASKETBALL_URL = 'https://v1.basketball.api-sports.io';
 
 // IPTV configuration
