@@ -2,17 +2,13 @@ const express = require('express');
 const router = express.Router();
 const {
     getTennisMatches,
-    getLiveTennisMatches,
-    getTodayTennisMatches
+    getTennisMatch
 } = require('../controllers/tennisController');
 
-// GET /api/tennis - Get all tennis matches (today + tomorrow)
+// GET /api/tennis - Get all tennis matches (today + tomorrow with streams)
 router.get('/', getTennisMatches);
 
-// GET /api/tennis/live - Get only live tennis matches
-router.get('/live', getLiveTennisMatches);
-
-// GET /api/tennis/today - Get today's active tennis matches
-router.get('/today', getTodayTennisMatches);
+// GET /api/tennis/:id - Get single match by ID
+router.get('/:id', getTennisMatch);
 
 module.exports = router;
