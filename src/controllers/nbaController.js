@@ -112,12 +112,12 @@ const fetchNBAFixtures = async () => {
         const [todayRes, tomorrowRes] = await Promise.all([
             axios.get(`${API_BASKETBALL_URL}/games`, {
                 headers: { 'x-apisports-key': API_BASKETBALL_KEY },
-                params: { league: 12, season: '2024-2025', date: today },
+                params: { league: 12, season: '2025-2026', date: today },
                 timeout: 15000
             }),
             axios.get(`${API_BASKETBALL_URL}/games`, {
                 headers: { 'x-apisports-key': API_BASKETBALL_KEY },
-                params: { league: 12, season: '2024-2025', date: tomorrow },
+                params: { league: 12, season: '2025-2026', date: tomorrow },
                 timeout: 15000
             })
         ]);
