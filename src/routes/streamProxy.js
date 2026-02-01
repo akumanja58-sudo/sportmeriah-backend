@@ -75,16 +75,11 @@ router.get('/:streamId.m3u8', async (req, res) => {
             console.log(`[Proxy] IPTV Base URL: ${iptvBaseUrl}`);
             console.log(`[Proxy] Proxy Base URL: ${proxyBaseUrl}`);
 
-            // Replace segment URLs - only match /hlsr/ paths (original IPTV format)
-            // This avoids double-encoding already proxied URLs
+            // Replace segment URLs - match /hlsr/ paths (original IPTV format)
+            // Only one replacement pass to avoid double-encoding
             let modifiedData = data.replace(/^(\/hlsr\/[^\s\r\n]+\.ts)$/gm, (match, path) => {
                 const fullUrl = `${iptvBaseUrl}${path}`;
                 return `${proxyBaseUrl}/api/stream/segment?url=${encodeURIComponent(fullUrl)}`;
-            });
-
-            // Also handle absolute IPTV URLs (https://...rocketdns.info/...)
-            modifiedData = modifiedData.replace(/^(https?:\/\/[^\s\r\n]*rocketdns[^\s\r\n]+\.ts)$/gm, (match, url) => {
-                return `${proxyBaseUrl}/api/stream/segment?url=${encodeURIComponent(url)}`;
             });
 
             console.log(`[Proxy] Modified m3u8 length: ${modifiedData.length}`);
