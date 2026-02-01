@@ -75,15 +75,15 @@ router.get('/:streamId.m3u8', async (req, res) => {
             console.log(`[Proxy] IPTV Base URL: ${iptvBaseUrl}`);
             console.log(`[Proxy] Proxy Base URL: ${proxyBaseUrl}`);
 
-            // Replace segment URLs using regex - match paths that end with .ts or .m3u8
-            // Use ABSOLUTE URLs so HLS.js can resolve them properly
-            let modifiedData = data.replace(/^(\/[^\s\r\n]+\.ts)$/gm, (match, path) => {
+            // Replace segment URLs - only match /hlsr/ paths (original IPTV format)
+            // This avoids double-encoding already proxied URLs
+            let modifiedData = data.replace(/^(\/hlsr\/[^\s\r\n]+\.ts)$/gm, (match, path) => {
                 const fullUrl = `${iptvBaseUrl}${path}`;
                 return `${proxyBaseUrl}/api/stream/segment?url=${encodeURIComponent(fullUrl)}`;
             });
 
-            // Also handle absolute URLs if any
-            modifiedData = modifiedData.replace(/^(https?:\/\/[^\s\r\n]+\.ts)$/gm, (match, url) => {
+            // Also handle absolute IPTV URLs (https://...rocketdns.info/...)
+            modifiedData = modifiedData.replace(/^(https?:\/\/[^\s\r\n]*rocketdns[^\s\r\n]+\.ts)$/gm, (match, url) => {
                 return `${proxyBaseUrl}/api/stream/segment?url=${encodeURIComponent(url)}`;
             });
 
