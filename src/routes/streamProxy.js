@@ -60,27 +60,31 @@ router.get('/:streamId.m3u8', async (req, res) => {
 
             console.log(`[Proxy] Raw m3u8 length: ${data.length}, first 100 chars: ${data.substring(0, 100)}`);
 
-            // Get base URL from final redirected URL
-            let baseUrl;
+            // Get base URL from final redirected URL (IPTV server)
+            let iptvBaseUrl;
             try {
                 const urlObj = new URL(finalUrl);
-                baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+                iptvBaseUrl = `${urlObj.protocol}//${urlObj.host}`;
             } catch (e) {
-                baseUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}`;
+                iptvBaseUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}`;
             }
 
-            console.log(`[Proxy] Base URL: ${baseUrl}`);
+            // Get our proxy base URL from environment or use default
+            const proxyBaseUrl = process.env.BACKEND_URL || 'https://sportmeriah-backend-production.up.railway.app';
+
+            console.log(`[Proxy] IPTV Base URL: ${iptvBaseUrl}`);
+            console.log(`[Proxy] Proxy Base URL: ${proxyBaseUrl}`);
 
             // Replace segment URLs using regex - match paths that end with .ts or .m3u8
-            // This handles: /hlsr/xxx/file.ts or relative paths
+            // Use ABSOLUTE URLs so HLS.js can resolve them properly
             let modifiedData = data.replace(/^(\/[^\s\r\n]+\.ts)$/gm, (match, path) => {
-                const fullUrl = `${baseUrl}${path}`;
-                return `/api/stream/segment?url=${encodeURIComponent(fullUrl)}`;
+                const fullUrl = `${iptvBaseUrl}${path}`;
+                return `${proxyBaseUrl}/api/stream/segment?url=${encodeURIComponent(fullUrl)}`;
             });
 
             // Also handle absolute URLs if any
             modifiedData = modifiedData.replace(/^(https?:\/\/[^\s\r\n]+\.ts)$/gm, (match, url) => {
-                return `/api/stream/segment?url=${encodeURIComponent(url)}`;
+                return `${proxyBaseUrl}/api/stream/segment?url=${encodeURIComponent(url)}`;
             });
 
             console.log(`[Proxy] Modified m3u8 length: ${modifiedData.length}`);
