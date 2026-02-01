@@ -15,6 +15,74 @@ const FOOTBALL_CATEGORIES = [
     { id: '171', name: 'SPORTS - SOCCER', priority: 1 },
 ];
 
+// Sports TV Category (Category 122) - Premium Sports Channels
+const SPORTS_TV_CATEGORY = '122';
+
+// Sports TV channels we want to feature for Football
+const FOOTBALL_TV_CHANNELS = [
+    // Premier League / EPL
+    { stream_id: 660938, name: 'Premier League TV', sport: 'football', league: 'Premier League' },
+
+    // beIN Sports (La Liga, Ligue 1, etc)
+    { stream_id: 3612, name: 'beIN Sports UHD', sport: 'football', league: 'Multi-League' },
+    { stream_id: 3613, name: 'beIN Sports en Espanol UHD', sport: 'football', league: 'La Liga' },
+    { stream_id: 5313, name: 'beIN Sports 4', sport: 'football', league: 'Multi-League' },
+    { stream_id: 5312, name: 'beIN Sports 5', sport: 'football', league: 'Multi-League' },
+    { stream_id: 5311, name: 'beIN Sports 6', sport: 'football', league: 'Multi-League' },
+    { stream_id: 5310, name: 'beIN Sports 7', sport: 'football', league: 'Multi-League' },
+    { stream_id: 5309, name: 'beIN Sports 8', sport: 'football', league: 'Multi-League' },
+    { stream_id: 90427, name: 'beIN Sports La Liga', sport: 'football', league: 'La Liga' },
+    { stream_id: 434356, name: 'beIN Sports Xtra', sport: 'football', league: 'Multi-League' },
+
+    // ESPN (EPL, UCL, etc)
+    { stream_id: 3636, name: 'ESPN UHD', sport: 'football', league: 'Multi-League' },
+    { stream_id: 3637, name: 'ESPN 2 UHD', sport: 'football', league: 'Multi-League' },
+    { stream_id: 3725, name: 'ESPN (SHD)', sport: 'football', league: 'Multi-League' },
+    { stream_id: 2581, name: 'ESPN 2 (SHD)', sport: 'football', league: 'Multi-League' },
+    { stream_id: 2578, name: 'ESPN Deportes (SHD)', sport: 'football', league: 'La Liga' },
+
+    // Fox Sports
+    { stream_id: 3645, name: 'Fox Sports 1 UHD', sport: 'football', league: 'Multi-League' },
+    { stream_id: 3646, name: 'Fox Sports 2 UHD', sport: 'football', league: 'Multi-League' },
+    { stream_id: 2501, name: 'Fox Sports 1 (SHD)', sport: 'football', league: 'Multi-League' },
+    { stream_id: 2500, name: 'Fox Sports 2', sport: 'football', league: 'Multi-League' },
+    { stream_id: 2531, name: 'Fox Soccer Plus', sport: 'football', league: 'Multi-League' },
+    { stream_id: 3800, name: 'Fox Soccer Plus LHD', sport: 'football', league: 'Multi-League' },
+    { stream_id: 2559, name: 'Fox Deportes (SHD)', sport: 'football', league: 'Liga MX' },
+
+    // CBS Sports
+    { stream_id: 3621, name: 'CBS Sports Network UHD', sport: 'football', league: 'UCL/UEL' },
+    { stream_id: 3712, name: 'CBS Sports Network (SHD)', sport: 'football', league: 'UCL/UEL' },
+    { stream_id: 660925, name: 'CBS Sports Golazo Network', sport: 'football', league: 'UCL/UEL' },
+
+    // Other Sports
+    { stream_id: 3810, name: 'Eleven Sports', sport: 'football', league: 'Multi-League' },
+    { stream_id: 50908, name: 'Fubo Sports Network', sport: 'football', league: 'Multi-League' },
+    { stream_id: 4445, name: 'TyC Sports', sport: 'football', league: 'Argentina' },
+];
+
+// Popular leagues to fetch (to limit API calls)
+const POPULAR_LEAGUES = [
+    39,   // Premier League
+    140,  // La Liga
+    135,  // Serie A
+    78,   // Bundesliga
+    61,   // Ligue 1
+    2,    // Champions League
+    3,    // Europa League
+    848,  // Conference League
+    45,   // FA Cup
+    48,   // League Cup
+    143,  // Copa del Rey
+    137,  // Coppa Italia
+    529,  // Super Cup
+    531,  // UEFA Super Cup
+    253,  // MLS
+    262,  // Liga MX
+    94,   // Primeira Liga (Portugal)
+    307,  // Saudi Pro League
+];
+
 // Team name variations for matching
 const TEAM_ALIASES = {
     'manchester united': ['man united', 'man utd', 'manchester utd', 'mufc'],
@@ -35,55 +103,35 @@ const TEAM_ALIASES = {
     'ac milan': ['milan'],
     'rb leipzig': ['leipzig'],
     'deportivo alaves': ['deportivo alavés', 'alaves', 'alavés'],
-    'espanyol': ['rcd espanyol'],
     'vitoria guimaraes': ['vitória guimarães', 'guimaraes', 'guimarães'],
     'al nassr': ['al-nassr', 'nassr'],
     'pumas unam': ['pumas', 'unam'],
-    'liverpool': ['liverpool fc'],
-    'chelsea': ['chelsea fc'],
-    'arsenal': ['arsenal fc'],
-    'juventus': ['juve'],
-    'napoli': ['ssc napoli'],
-    'roma': ['as roma'],
-    'lazio': ['ss lazio'],
-    'sevilla': ['sevilla fc'],
-    'villarreal': ['villarreal cf'],
-    'real betis': ['betis'],
-    'real sociedad': ['sociedad'],
-    'athletic bilbao': ['athletic club', 'bilbao'],
-    'benfica': ['sl benfica'],
-    'porto': ['fc porto'],
-    'sporting': ['sporting cp', 'sporting lisbon'],
-    'ajax': ['afc ajax'],
-    'psv': ['psv eindhoven'],
-    'feyenoord': ['feyenoord rotterdam'],
 };
 
 // Get all football matches with streams
 const getFootballMatches = async (req, res) => {
     try {
-        const [fixtures, iptvChannels] = await Promise.all([
+        // Fetch fixtures, IPTV channels, and Sports TV channels in parallel
+        const [fixtures, iptvChannels, sportsTVChannels] = await Promise.all([
             fetchFixtures(),
-            fetchIPTVChannels()
+            fetchIPTVChannels(),
+            fetchSportsTVChannels()
         ]);
 
-        // Match fixtures with IPTV channels (STRICT matching)
+        // Match fixtures with IPTV channels
         const matchedFixtures = matchFixturesWithStreams(fixtures, iptvChannels);
 
+        // Separate by status
         const liveMatches = matchedFixtures.filter(m => m.status === 'LIVE');
         const upcomingMatches = matchedFixtures.filter(m => m.status === 'UPCOMING');
         const finishedMatches = matchedFixtures.filter(m => m.status === 'FINISHED');
 
-        // Get unmatched IPTV channels
+        // Get unmatched IPTV channels (channels without fixture match)
         const matchedStreamIds = new Set(matchedFixtures.filter(m => m.stream).map(m => m.stream.id));
         const unmatchedChannels = iptvChannels
             .filter(ch => !matchedStreamIds.has(ch.id))
-            .filter(ch => hasTeamNames(ch.name))
-            .map(ch => ({
-                ...ch,
-                parsedMatch: parseChannelName(ch.name)
-            }))
-            .slice(0, 50);
+            .filter(ch => hasTeamNames(ch.name)) // Only show channels with team names
+            .slice(0, 50); // Limit unmatched
 
         res.json({
             success: true,
@@ -94,14 +142,16 @@ const getFootballMatches = async (req, res) => {
                 live: liveMatches.length,
                 upcoming: upcomingMatches.length,
                 finished: finishedMatches.length,
-                withStreams: matchedFixtures.filter(m => m.stream).length
+                withStreams: matchedFixtures.filter(m => m.stream).length,
+                sportsTVChannels: sportsTVChannels.length
             },
             matches: {
                 live: liveMatches,
                 upcoming: upcomingMatches,
-                finished: finishedMatches.slice(0, 20)
+                finished: finishedMatches.slice(0, 20) // Limit finished matches
             },
-            extraChannels: unmatchedChannels
+            extraChannels: unmatchedChannels, // Channels that didn't match any fixture
+            sportsTVChannels: sportsTVChannels // NEW: Premium Sports TV channels
         });
 
     } catch (error) {
@@ -114,12 +164,60 @@ const getFootballMatches = async (req, res) => {
     }
 };
 
+// NEW: Fetch Sports TV channels from Category 122
+const fetchSportsTVChannels = async () => {
+    try {
+        const response = await axios.get(`${IPTV_PROTOCOL}://${IPTV_SERVER}/player_api.php`, {
+            params: {
+                username: IPTV_USER,
+                password: IPTV_PASS,
+                action: 'get_live_streams',
+                category_id: SPORTS_TV_CATEGORY
+            },
+            timeout: 10000
+        });
+
+        if (response.data && Array.isArray(response.data)) {
+            // Filter to only get our predefined football channels
+            const footballStreamIds = new Set(FOOTBALL_TV_CHANNELS.map(ch => ch.stream_id));
+
+            const channels = response.data
+                .filter(ch => footballStreamIds.has(ch.stream_id))
+                .map(ch => {
+                    // Find our predefined channel info
+                    const predefined = FOOTBALL_TV_CHANNELS.find(p => p.stream_id === ch.stream_id);
+                    return {
+                        id: ch.stream_id,
+                        name: predefined?.name || ch.name,
+                        originalName: ch.name,
+                        icon: ch.stream_icon || null,
+                        league: predefined?.league || 'Sports',
+                        category: 'Sports TV',
+                        type: 'tv_channel'
+                    };
+                });
+
+            // Sort by predefined order
+            const orderMap = new Map(FOOTBALL_TV_CHANNELS.map((ch, idx) => [ch.stream_id, idx]));
+            channels.sort((a, b) => (orderMap.get(a.id) || 999) - (orderMap.get(b.id) || 999));
+
+            return channels;
+        }
+
+        return [];
+    } catch (err) {
+        console.error('Error fetching Sports TV channels:', err.message);
+        return [];
+    }
+};
+
 // Fetch fixtures from API Sports
 const fetchFixtures = async () => {
     try {
         const today = new Date().toISOString().split('T')[0];
         const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
+        // Fetch today and tomorrow fixtures
         const [todayRes, tomorrowRes] = await Promise.all([
             axios.get(`${API_SPORTS_URL}/fixtures`, {
                 headers: { 'x-apisports-key': API_SPORTS_KEY },
@@ -138,6 +236,7 @@ const fetchFixtures = async () => {
             ...(tomorrowRes.data?.response || [])
         ];
 
+        // Map to simplified format
         return allFixtures.map(f => ({
             id: f.fixture.id,
             date: f.fixture.date,
@@ -206,6 +305,7 @@ const fetchIPTVChannels = async () => {
         }
     }
 
+    // Remove duplicates
     const seen = new Set();
     return allChannels.filter(ch => {
         if (seen.has(ch.id)) return false;
@@ -214,316 +314,232 @@ const fetchIPTVChannels = async () => {
     });
 };
 
-// Parse channel name to extract team names
-// Format: "USA Soccer01: Spain - La Liga : Espanyol vs Deportivo Alavés @ 03:00pm EST"
-const parseChannelName = (channelName) => {
-    if (!channelName) return { homeTeam: null, awayTeam: null, league: null };
-
-    let name = channelName;
-
-    // Remove prefix like "USA Soccer01: "
-    name = name.replace(/^[A-Z]+\s*Soccer\d*:\s*/i, '');
-
-    // Remove time suffix like "@ 03:00pm EST"
-    name = name.replace(/@\s*\d{1,2}:\d{2}\s*(am|pm)?\s*[A-Z]{2,4}$/i, '').trim();
-
-    let league = null;
-    let teamsStr = name;
-
-    // Check for league separator ":"
-    if (name.includes(':')) {
-        const parts = name.split(':');
-        if (parts.length >= 2) {
-            league = parts[0].trim();
-            teamsStr = parts.slice(1).join(':').trim();
-        }
-    }
-
-    // Extract teams from "Team A vs Team B"
-    const vsMatch = teamsStr.match(/(.+?)\s+(?:vs\.?|v)\s+(.+)/i);
-    if (vsMatch) {
-        return {
-            homeTeam: normalizeTeamName(vsMatch[1].trim()),
-            awayTeam: normalizeTeamName(vsMatch[2].trim()),
-            league: league
-        };
-    }
-
-    return { homeTeam: null, awayTeam: null, league: league };
-};
-
-// Calculate match score between fixture and parsed channel
-const calculateMatchScore = (fixture, parsedChannel) => {
-    let score = 0;
-
-    const fixtureHome = normalizeTeamName(fixture.homeTeam.name);
-    const fixtureAway = normalizeTeamName(fixture.awayTeam.name);
-    const fixtureHomeAliases = getTeamAliases(fixtureHome);
-    const fixtureAwayAliases = getTeamAliases(fixtureAway);
-
-    const channelHome = parsedChannel.homeTeam || '';
-    const channelAway = parsedChannel.awayTeam || '';
-    const channelHomeAliases = getTeamAliases(channelHome);
-    const channelAwayAliases = getTeamAliases(channelAway);
-
-    // Check home team match
-    const homeMatchesHome = fixtureHomeAliases.some(a => channelHomeAliases.includes(a));
-    const homeMatchesAway = fixtureHomeAliases.some(a => channelAwayAliases.includes(a));
-
-    // Check away team match
-    const awayMatchesAway = fixtureAwayAliases.some(a => channelAwayAliases.includes(a));
-    const awayMatchesHome = fixtureAwayAliases.some(a => channelHomeAliases.includes(a));
-
-    // Both teams match in order = perfect
-    if (homeMatchesHome && awayMatchesAway) {
-        score = 3;
-    }
-    // Both teams match reversed = good
-    else if (homeMatchesAway && awayMatchesHome) {
-        score = 2;
-    }
-    // Only one team matches = NOT ENOUGH (score 1, won't be used)
-    else if (homeMatchesHome || homeMatchesAway || awayMatchesAway || awayMatchesHome) {
-        score = 1;
-    }
-
-    return score;
-};
-
-// Match fixtures with IPTV streams - STRICT MATCHING
+// Match fixtures with IPTV streams
 const matchFixturesWithStreams = (fixtures, channels) => {
-    const channelToFixture = new Map();
-
-    for (const channel of channels) {
-        const parsedChannel = parseChannelName(channel.name);
-        if (!parsedChannel.homeTeam || !parsedChannel.awayTeam) continue;
-
-        let bestMatch = null;
-        let bestScore = 0;
-
-        for (const fixture of fixtures) {
-            const score = calculateMatchScore(fixture, parsedChannel);
-            // STRICT: Minimum score of 2 (BOTH teams must match)
-            if (score > bestScore && score >= 2) {
-                bestScore = score;
-                bestMatch = fixture;
-            }
-        }
-
-        if (bestMatch) {
-            const existing = channelToFixture.get(bestMatch.id);
-            if (!existing || existing.score < bestScore) {
-                channelToFixture.set(bestMatch.id, { channel, score: bestScore });
-            }
-        }
-    }
-
     return fixtures.map(fixture => {
-        const match = channelToFixture.get(fixture.id);
+        const stream = findMatchingChannel(fixture, channels);
         return {
             ...fixture,
-            stream: match ? {
-                id: match.channel.id,
-                name: match.channel.name,
-                category: match.channel.category
+            stream: stream ? {
+                id: stream.id,
+                name: stream.name,
+                category: stream.category
             } : null,
-            hasStream: !!match
+            hasStream: !!stream
         };
     });
 };
 
-// Get single match by ID
-const getFootballMatch = async (req, res) => {
-    try {
-        const { id } = req.params;
+// Find matching channel for a fixture - Updated for SphereIPTV format
+// Format: "USA Soccer01: Spain - La Liga : Espanyol vs Deportivo Alavés @ 03:00pm EST"
+const findMatchingChannel = (fixture, channels) => {
+    const homeTeam = normalizeTeamName(fixture.homeTeam.name);
+    const awayTeam = normalizeTeamName(fixture.awayTeam.name);
+    const homeAliases = getTeamAliases(homeTeam);
+    const awayAliases = getTeamAliases(awayTeam);
 
-        const fixtureRes = await axios.get(`${API_SPORTS_URL}/fixtures`, {
-            headers: { 'x-apisports-key': API_SPORTS_KEY },
-            params: { id },
-            timeout: 15000
-        });
+    // Find channel that contains both team names
+    for (const channel of channels) {
+        const channelName = channel.name.toLowerCase();
 
-        if (!fixtureRes.data?.response?.length) {
-            return res.status(404).json({ success: false, error: 'Match not found' });
+        const hasHome = homeAliases.some(alias => channelName.includes(alias));
+        const hasAway = awayAliases.some(alias => channelName.includes(alias));
+
+        // STRICT: Must have BOTH teams for a match
+        if (hasHome && hasAway) {
+            return channel;
         }
-
-        const f = fixtureRes.data.response[0];
-        const fixture = {
-            id: f.fixture.id,
-            date: f.fixture.date,
-            timestamp: f.fixture.timestamp,
-            status: mapStatus(f.fixture.status.short),
-            statusDetail: f.fixture.status.long,
-            elapsed: f.fixture.status.elapsed,
-            league: {
-                id: f.league.id,
-                name: f.league.name,
-                country: f.league.country,
-                logo: f.league.logo
-            },
-            homeTeam: {
-                id: f.teams.home.id,
-                name: f.teams.home.name,
-                logo: f.teams.home.logo
-            },
-            awayTeam: {
-                id: f.teams.away.id,
-                name: f.teams.away.name,
-                logo: f.teams.away.logo
-            },
-            score: {
-                home: f.goals.home,
-                away: f.goals.away
-            },
-            venue: f.fixture.venue?.name || null
-        };
-
-        const channels = await fetchIPTVChannels();
-        const parsedFixture = {
-            homeTeam: normalizeTeamName(fixture.homeTeam.name),
-            awayTeam: normalizeTeamName(fixture.awayTeam.name)
-        };
-
-        // Find matching channel with strict matching
-        let matchedChannel = null;
-        for (const channel of channels) {
-            const parsed = parseChannelName(channel.name);
-            const score = calculateMatchScore(fixture, parsed);
-            if (score >= 2) {
-                matchedChannel = channel;
-                break;
-            }
-        }
-
-        res.json({
-            success: true,
-            match: {
-                ...fixture,
-                stream: matchedChannel ? {
-                    id: matchedChannel.id,
-                    name: matchedChannel.name,
-                    category: matchedChannel.category
-                } : null,
-                hasStream: !!matchedChannel
-            }
-        });
-
-    } catch (error) {
-        console.error('Football Match Error:', error.message);
-        res.status(500).json({ success: false, error: 'Failed to fetch match', message: error.message });
     }
+
+    return null;
 };
 
-// Get stream by ID - RETURN MATCHED FIXTURE DATA
-const getFootballStream = async (req, res) => {
-    try {
-        const { streamId } = req.params;
-
-        const [channels, fixtures] = await Promise.all([
-            fetchIPTVChannels(),
-            fetchFixtures()
-        ]);
-
-        const channel = channels.find(ch => String(ch.id) === String(streamId));
-
-        if (!channel) {
-            return res.status(404).json({ success: false, error: 'Stream not found' });
-        }
-
-        // Parse channel name to get team info
-        const parsedChannel = parseChannelName(channel.name);
-
-        // Find matching fixture for this channel
-        let matchedFixture = null;
-        let bestScore = 0;
-
-        if (parsedChannel.homeTeam && parsedChannel.awayTeam) {
-            for (const fixture of fixtures) {
-                const score = calculateMatchScore(fixture, parsedChannel);
-                if (score > bestScore && score >= 2) {
-                    bestScore = score;
-                    matchedFixture = fixture;
-                }
-            }
-        }
-
-        res.json({
-            success: true,
-            stream: channel,
-            match: matchedFixture ? {
-                id: matchedFixture.id,
-                date: matchedFixture.date,
-                status: matchedFixture.status,
-                elapsed: matchedFixture.elapsed,
-                league: matchedFixture.league,
-                homeTeam: matchedFixture.homeTeam,
-                awayTeam: matchedFixture.awayTeam,
-                score: matchedFixture.score
-            } : null,
-            parsedInfo: !matchedFixture ? parsedChannel : null
-        });
-
-    } catch (error) {
-        console.error('Football Stream Error:', error.message);
-        res.status(500).json({ success: false, error: 'Failed to fetch stream', message: error.message });
-    }
+// Normalize team name for comparison
+const normalizeTeamName = (name) => {
+    return name
+        .toLowerCase()
+        .replace(/fc|cf|sc|ac|as|ss|us|rc|cd|ud|rcd|sd|ca|ce|real|racing|deportivo|atletico|atlético|sporting/gi, '')
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
 };
 
-// Helper functions
+// Get all aliases for a team
+const getTeamAliases = (normalizedName) => {
+    const aliases = [normalizedName];
+
+    // Check if team has predefined aliases
+    for (const [key, values] of Object.entries(TEAM_ALIASES)) {
+        if (normalizedName.includes(key) || values.some(v => normalizedName.includes(v))) {
+            aliases.push(key, ...values);
+        }
+    }
+
+    return [...new Set(aliases)];
+};
+
+// Check if channel name contains team names
+const hasTeamNames = (channelName) => {
+    // Pattern: "Team1 vs Team2" or "Team1 VS Team2"
+    return /\bvs\b/i.test(channelName);
+};
+
+// Exclude certain channels
+const isExcludedChannel = (name) => {
+    const excludePatterns = [
+        /test/i,
+        /backup/i,
+        /offline/i,
+        /\[.*\]/,
+    ];
+    return excludePatterns.some(pattern => pattern.test(name));
+};
+
+// Map API status to our status
 const mapStatus = (status) => {
-    const liveStatuses = ['1H', '2H', 'HT', 'ET', 'P', 'BT', 'LIVE'];
+    const liveStatuses = ['1H', '2H', 'HT', 'ET', 'BT', 'P', 'SUSP', 'INT', 'LIVE'];
     const finishedStatuses = ['FT', 'AET', 'PEN', 'AWD', 'WO'];
+
     if (liveStatuses.includes(status)) return 'LIVE';
     if (finishedStatuses.includes(status)) return 'FINISHED';
     return 'UPCOMING';
 };
 
-const normalizeTeamName = (name) => {
-    if (!name) return '';
-    return name
-        .toLowerCase()
-        .replace(/fc|cf|sc|ac|as|ss|afc|ssc/gi, '')
-        .replace(/[^a-z0-9\s]/gi, '')
-        .replace(/\s+/g, ' ')
-        .trim();
+// Get single stream info
+const getStreamInfo = async (req, res) => {
+    try {
+        const { streamId } = req.params;
+
+        // Fetch all IPTV channels to find this stream
+        const [iptvChannels, sportsTVChannels] = await Promise.all([
+            fetchIPTVChannels(),
+            fetchSportsTVChannels()
+        ]);
+
+        // Combine all channels
+        const allChannels = [...iptvChannels, ...sportsTVChannels];
+        const channel = allChannels.find(ch => ch.id === parseInt(streamId));
+
+        if (!channel) {
+            return res.status(404).json({
+                success: false,
+                error: 'Stream not found'
+            });
+        }
+
+        // Build stream URL
+        const streamUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${streamId}.m3u8`;
+
+        // Try to find matching fixture
+        const fixtures = await fetchFixtures();
+        const match = findMatchingFixture(channel.name, fixtures);
+
+        // Parse team names from channel name
+        const parsedInfo = parseChannelName(channel.name);
+
+        res.json({
+            success: true,
+            stream: {
+                id: channel.id,
+                name: channel.name,
+                url: streamUrl,
+                category: channel.category,
+                icon: channel.icon,
+                league: channel.league || null,
+                type: channel.type || 'match'
+            },
+            match: match,
+            parsedInfo: parsedInfo
+        });
+
+    } catch (error) {
+        console.error('Stream Info Error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch stream info',
+            message: error.message
+        });
+    }
 };
 
-const getTeamAliases = (teamName) => {
-    if (!teamName) return [];
-    const normalized = teamName.toLowerCase().trim();
-    const aliases = [normalized];
+// Find matching fixture for a channel
+const findMatchingFixture = (channelName, fixtures) => {
+    const name = channelName.toLowerCase();
 
-    for (const [key, values] of Object.entries(TEAM_ALIASES)) {
-        if (normalized.includes(key) || values.some(v => normalized.includes(v))) {
-            aliases.push(key, ...values);
+    for (const fixture of fixtures) {
+        const homeAliases = getTeamAliases(normalizeTeamName(fixture.homeTeam.name));
+        const awayAliases = getTeamAliases(normalizeTeamName(fixture.awayTeam.name));
+
+        const hasHome = homeAliases.some(alias => name.includes(alias));
+        const hasAway = awayAliases.some(alias => name.includes(alias));
+
+        if (hasHome && hasAway) {
+            return fixture;
         }
     }
 
-    const firstWord = normalized.split(' ')[0];
-    if (firstWord && firstWord.length > 3) {
-        aliases.push(firstWord);
+    return null;
+};
+
+// Parse channel name to extract info
+// Format: "USA Soccer01: Spain - La Liga : Espanyol vs Deportivo Alavés @ 03:00pm EST"
+const parseChannelName = (channelName) => {
+    // Try to extract "Team1 vs Team2"
+    const vsMatch = channelName.match(/([^:]+)\s+vs\s+([^@]+)/i);
+
+    if (vsMatch) {
+        let homeTeam = vsMatch[1].trim();
+        let awayTeam = vsMatch[2].trim();
+
+        // Clean up team names - remove league prefix if present
+        homeTeam = homeTeam.replace(/^.*?:\s*/, '').trim();
+        awayTeam = awayTeam.replace(/@.*$/, '').trim();
+
+        // Try to extract league from channel name
+        const leagueMatch = channelName.match(/:\s*([^:]+?)\s*:\s*[^:]+vs/i);
+        const league = leagueMatch ? leagueMatch[1].trim() : null;
+
+        return {
+            homeTeam,
+            awayTeam,
+            league,
+            raw: channelName
+        };
     }
 
-    return [...new Set(aliases.map(a => a.toLowerCase().trim()).filter(a => a))];
+    return {
+        homeTeam: null,
+        awayTeam: null,
+        league: null,
+        raw: channelName
+    };
 };
 
-const isExcludedChannel = (name) => {
-    if (!name) return true;
-    const trimmedName = name.replace(/USA Soccer\d+:\s*/, '').trim();
-    if (!trimmedName) return true;
-    const upper = name.toUpperCase();
-    const excludeKeywords = ['#####', '######', 'NO EVENT', 'OFF AIR', 'PLACEHOLDER'];
-    return excludeKeywords.some(kw => upper.includes(kw));
-};
+// NEW: Get Sports TV channels only
+const getSportsTVChannels = async (req, res) => {
+    try {
+        const channels = await fetchSportsTVChannels();
 
-const hasTeamNames = (name) => {
-    if (!name) return false;
-    const lower = name.toLowerCase();
-    return lower.includes(' vs ') || lower.includes(' v ');
+        res.json({
+            success: true,
+            sport: 'football',
+            timestamp: new Date().toISOString(),
+            count: channels.length,
+            channels: channels
+        });
+
+    } catch (error) {
+        console.error('Sports TV Channels Error:', error.message);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch Sports TV channels',
+            message: error.message
+        });
+    }
 };
 
 module.exports = {
     getFootballMatches,
-    getFootballMatch,
-    getFootballStream
+    getStreamInfo,
+    getSportsTVChannels
 };
