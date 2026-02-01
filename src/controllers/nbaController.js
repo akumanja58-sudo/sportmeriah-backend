@@ -256,4 +256,33 @@ const getStreamInfo = async (req, res) => {
     }
 };
 
-module.exports = { getBasketballMatches, getStreamInfo };
+// Get single match by game ID
+const getBasketballMatch = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const fixtures = await fetchNBAFixtures();
+        const match = fixtures.find(f => f.id === parseInt(id));
+
+        if (!match) {
+            return res.status(404).json({ success: false, error: 'Match not found' });
+        }
+
+        const iptvChannels = await fetchIPTVChannels();
+        const stream = findMatchingChannel(match, iptvChannels);
+
+        res.json({
+            success: true,
+            match: { ...match, stream: stream ? { id: stream.id, name: stream.name, category: stream.category } : null }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+// Get stream by stream ID (alias for getStreamInfo)
+const getBasketballStream = async (req, res) => {
+    req.params.streamId = req.params.streamId;
+    return getStreamInfo(req, res);
+};
+
+module.exports = { getBasketballMatches, getBasketballMatch, getBasketballStream, getStreamInfo };
