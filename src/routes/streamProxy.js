@@ -48,41 +48,63 @@ router.get('/:streamId.m3u8', async (req, res) => {
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
-        // Collect data as buffer first
-        const chunks = [];
+        // Collect data and modify URLs
+        let data = '';
         response.on('data', chunk => {
-            chunks.push(chunk);
+            data += chunk.toString();
         });
 
         response.on('end', () => {
-            // Convert buffer to string
-            const data = Buffer.concat(chunks).toString('utf8');
+            const proxyBase = `/api/stream/`;
 
-            console.log(`[Proxy] Raw m3u8 length: ${data.length}, first 100 chars: ${data.substring(0, 100)}`);
-
-            // Get base URL from final redirected URL (IPTV server)
-            let iptvBaseUrl;
+            // Get base URL from final redirected URL
+            let baseUrl;
             try {
                 const urlObj = new URL(finalUrl);
-                iptvBaseUrl = `${urlObj.protocol}//${urlObj.host}`;
+                const pathParts = urlObj.pathname.split('/');
+                pathParts.pop(); // Remove filename
+                baseUrl = `${urlObj.protocol}//${urlObj.host}${pathParts.join('/')}`;
             } catch (e) {
-                iptvBaseUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}`;
+                baseUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}`;
             }
 
-            // Get our proxy base URL from environment or use default
-            const proxyBaseUrl = process.env.BACKEND_URL || 'https://sportmeriah-backend-production.up.railway.app';
+            console.log(`[Proxy] Base URL for segments: ${baseUrl}`);
 
-            console.log(`[Proxy] IPTV Base URL: ${iptvBaseUrl}`);
-            console.log(`[Proxy] Proxy Base URL: ${proxyBaseUrl}`);
+            let modifiedData = data;
 
-            // Replace segment URLs - match /hlsr/ paths (original IPTV format)
-            // Only one replacement pass to avoid double-encoding
-            let modifiedData = data.replace(/^(\/hlsr\/[^\s\r\n]+\.ts)$/gm, (match, path) => {
-                const fullUrl = `${iptvBaseUrl}${path}`;
-                return `${proxyBaseUrl}/api/stream/segment?url=${encodeURIComponent(fullUrl)}`;
-            });
+            // Process each line
+            modifiedData = modifiedData.split('\n').map(line => {
+                // Skip comments/tags
+                if (line.startsWith('#') || line.trim() === '') {
+                    return line;
+                }
 
-            console.log(`[Proxy] Modified m3u8 length: ${modifiedData.length}`);
+                // Handle .ts and .m3u8 files
+                if (line.includes('.ts') || line.includes('.m3u8')) {
+                    let fullUrl;
+                    const trimmedLine = line.trim();
+
+                    if (trimmedLine.startsWith('http')) {
+                        // Already absolute URL - use as-is (includes token)
+                        fullUrl = trimmedLine;
+                    } else if (trimmedLine.startsWith('/')) {
+                        // Absolute path - use the redirected host
+                        try {
+                            const urlObj = new URL(finalUrl);
+                            fullUrl = `${urlObj.protocol}//${urlObj.host}${trimmedLine}`;
+                        } catch (e) {
+                            fullUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}${trimmedLine}`;
+                        }
+                    } else {
+                        // Relative path - resolve from base URL (this preserves the token path!)
+                        fullUrl = `${baseUrl}/${trimmedLine}`;
+                    }
+
+                    return `${proxyBase}segment?url=${encodeURIComponent(fullUrl)}`;
+                }
+
+                return line;
+            }).join('\n');
 
             res.send(modifiedData);
         });
