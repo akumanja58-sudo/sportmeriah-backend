@@ -72,6 +72,9 @@ router.get('/:streamId.m3u8', async (req, res) => {
 
             let modifiedData = data;
 
+            // Normalize line endings (handle \r\n, \r, or \n)
+            modifiedData = modifiedData.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
             // Process each line
             modifiedData = modifiedData.split('\n').map(line => {
                 // Skip comments/tags
