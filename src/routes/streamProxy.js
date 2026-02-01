@@ -48,66 +48,42 @@ router.get('/:streamId.m3u8', async (req, res) => {
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
 
-        // Collect data and modify URLs
-        let data = '';
+        // Collect data as buffer first
+        const chunks = [];
         response.on('data', chunk => {
-            data += chunk.toString();
+            chunks.push(chunk);
         });
 
         response.on('end', () => {
-            const proxyBase = `/api/stream/`;
+            // Convert buffer to string
+            const data = Buffer.concat(chunks).toString('utf8');
+
+            console.log(`[Proxy] Raw m3u8 length: ${data.length}, first 100 chars: ${data.substring(0, 100)}`);
 
             // Get base URL from final redirected URL
             let baseUrl;
             try {
                 const urlObj = new URL(finalUrl);
-                const pathParts = urlObj.pathname.split('/');
-                pathParts.pop(); // Remove filename
-                baseUrl = `${urlObj.protocol}//${urlObj.host}${pathParts.join('/')}`;
+                baseUrl = `${urlObj.protocol}//${urlObj.host}`;
             } catch (e) {
                 baseUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}`;
             }
 
-            console.log(`[Proxy] Base URL for segments: ${baseUrl}`);
+            console.log(`[Proxy] Base URL: ${baseUrl}`);
 
-            let modifiedData = data;
+            // Replace segment URLs using regex - match paths that end with .ts or .m3u8
+            // This handles: /hlsr/xxx/file.ts or relative paths
+            let modifiedData = data.replace(/^(\/[^\s\r\n]+\.ts)$/gm, (match, path) => {
+                const fullUrl = `${baseUrl}${path}`;
+                return `/api/stream/segment?url=${encodeURIComponent(fullUrl)}`;
+            });
 
-            // Normalize line endings (handle \r\n, \r, or \n)
-            modifiedData = modifiedData.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            // Also handle absolute URLs if any
+            modifiedData = modifiedData.replace(/^(https?:\/\/[^\s\r\n]+\.ts)$/gm, (match, url) => {
+                return `/api/stream/segment?url=${encodeURIComponent(url)}`;
+            });
 
-            // Process each line
-            modifiedData = modifiedData.split('\n').map(line => {
-                // Skip comments/tags
-                if (line.startsWith('#') || line.trim() === '') {
-                    return line;
-                }
-
-                // Handle .ts and .m3u8 files
-                if (line.includes('.ts') || line.includes('.m3u8')) {
-                    let fullUrl;
-                    const trimmedLine = line.trim();
-
-                    if (trimmedLine.startsWith('http')) {
-                        // Already absolute URL - use as-is (includes token)
-                        fullUrl = trimmedLine;
-                    } else if (trimmedLine.startsWith('/')) {
-                        // Absolute path - use the redirected host
-                        try {
-                            const urlObj = new URL(finalUrl);
-                            fullUrl = `${urlObj.protocol}//${urlObj.host}${trimmedLine}`;
-                        } catch (e) {
-                            fullUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}${trimmedLine}`;
-                        }
-                    } else {
-                        // Relative path - resolve from base URL (this preserves the token path!)
-                        fullUrl = `${baseUrl}/${trimmedLine}`;
-                    }
-
-                    return `${proxyBase}segment?url=${encodeURIComponent(fullUrl)}`;
-                }
-
-                return line;
-            }).join('\n');
+            console.log(`[Proxy] Modified m3u8 length: ${modifiedData.length}`);
 
             res.send(modifiedData);
         });
