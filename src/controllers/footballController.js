@@ -538,8 +538,38 @@ const getSportsTVChannels = async (req, res) => {
     }
 };
 
+// Get single match by fixture ID
+const getFootballMatch = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const fixtures = await fetchFootballFixtures();
+        const match = fixtures.find(f => f.id === parseInt(id));
+
+        if (!match) {
+            return res.status(404).json({ success: false, error: 'Match not found' });
+        }
+
+        const iptvChannels = await fetchIPTVChannels();
+        const stream = findMatchingChannel(match, iptvChannels);
+
+        res.json({
+            success: true,
+            match: { ...match, stream: stream ? { id: stream.id, name: stream.name, category: stream.category } : null }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+// Get stream by stream ID (alias)
+const getFootballStream = async (req, res) => {
+    return getStreamInfo(req, res);
+};
+
 module.exports = {
     getFootballMatches,
+    getFootballMatch,
+    getFootballStream,
     getStreamInfo,
     getSportsTVChannels
 };
