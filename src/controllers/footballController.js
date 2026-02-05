@@ -541,37 +541,54 @@ const findSphereStream = (fixture, channels) => {
 const findPearlStream = (fixture, channels) => {
     const leagueId = fixture.league.id;
 
-    // La Liga - use team-based mapping
-    if (leagueId === 140) {
+    // La Liga OR Copa del Rey - use team-based mapping
+    if (leagueId === 140 || leagueId === 143) {
         return findPearlLaLigaStream(fixture);
     }
 
-    // Other leagues - match by team name in channel name (same logic as Sphere)
+    // Check if this league is supported by PearlIPTV at all
+    const supportedLeagueIds = new Set(
+        PEARL_FOOTBALL_CATEGORIES
+            .filter(c => c.league_id !== null)
+            .map(c => c.league_id)
+    );
+
+    // Map cup competitions to their league counterpart
+    const cupToLeague = {
+        137: 135,  // Coppa Italia → Serie A
+        66: 61,    // Coupe de France → Ligue 1
+    };
+    const targetLeagueId = cupToLeague[leagueId] || leagueId;
+
+    if (!supportedLeagueIds.has(targetLeagueId)) {
+        return null; // This league isn't covered by Pearl
+    }
+
     const homeTeam = normalizeTeamName(fixture.homeTeam.name);
     const awayTeam = normalizeTeamName(fixture.awayTeam.name);
     const homeAliases = getTeamAliases(homeTeam);
     const awayAliases = getTeamAliases(awayTeam);
 
-    // For PearlIPTV per-team channels, we match if channel has EITHER team
-    // (because each team has their own channel that activates during their match)
+    // First pass: "vs" format channels (both teams match) - best quality match
     for (const channel of channels) {
         const channelName = channel.name.toLowerCase();
-
-        // If channel is from matching league category
-        if (channel.league_id && channel.league_id === leagueId) {
-            const hasHome = homeAliases.some(alias => channelName.includes(alias));
-            const hasAway = awayAliases.some(alias => channelName.includes(alias));
-
-            if (hasHome || hasAway) {
-                return channel;
-            }
-        }
-
-        // Also check for "vs" format channels (some Pearl categories have this)
-        const hasHome = homeAliases.some(alias => channelName.includes(alias));
-        const hasAway = awayAliases.some(alias => channelName.includes(alias));
+        const hasHome = homeAliases.some(alias => alias.length >= 4 && channelName.includes(alias));
+        const hasAway = awayAliases.some(alias => alias.length >= 4 && channelName.includes(alias));
 
         if (hasHome && hasAway) {
+            return channel;
+        }
+    }
+
+    // Second pass: per-team channels, ONLY from matching league category
+    for (const channel of channels) {
+        if (!channel.league_id || channel.league_id !== targetLeagueId) continue;
+
+        const channelName = channel.name.toLowerCase();
+        const hasHome = homeAliases.some(alias => alias.length >= 4 && channelName.includes(alias));
+        const hasAway = awayAliases.some(alias => alias.length >= 4 && channelName.includes(alias));
+
+        if (hasHome || hasAway) {
             return channel;
         }
     }

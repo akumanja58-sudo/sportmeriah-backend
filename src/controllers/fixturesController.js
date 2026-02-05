@@ -496,8 +496,10 @@ function findPearlStreamForFixture(fixture) {
     const awayTeam = fixture.teams.away.name;
     const leagueId = fixture.league.id;
 
-    // La Liga - use direct team mapping
-    if (leagueId === 140) {
+    // La Liga OR Copa del Rey (same teams!) - use direct team mapping
+    const useTeamMapping = leagueId === 140 || leagueId === 143;
+
+    if (useTeamMapping) {
         const homeNorm = normalizeTeamName(homeTeam);
         const awayNorm = normalizeTeamName(awayTeam);
         const homeVariations = getTeamVariations(homeTeam);
@@ -529,17 +531,43 @@ function findPearlStreamForFixture(fixture) {
     return null;
 }
 
+// ========== SUPPORTED LEAGUES FOR PEARLIPTV ==========
+const PEARL_SUPPORTED_LEAGUES = new Set(
+    PEARL_FOOTBALL_CATEGORIES
+        .filter(c => c.league_id !== null)
+        .map(c => c.league_id)
+);
+
+// Leagues where Copa/Cup competition teams overlap with league teams
+// Copa del Rey teams are La Liga teams, Coppa Italia teams are Serie A teams, etc.
+const CUP_TO_LEAGUE_MAP = {
+    143: 140,  // Copa del Rey → La Liga
+    137: 135,  // Coppa Italia → Serie A
+    66: 61,    // Coupe de France → Ligue 1
+    529: null,  // Super Cup → check both teams
+};
+
 // ========== FIND PEARL STREAM BY CHANNEL MATCHING ==========
-function findPearlStreamByChannelMatch(homeTeam, awayTeam, pearlChannels) {
+function findPearlStreamByChannelMatch(homeTeam, awayTeam, pearlChannels, leagueId) {
     const homeVariations = getTeamVariations(homeTeam);
     const awayVariations = getTeamVariations(awayTeam);
 
-    for (const channel of pearlChannels) {
+    // Only try channels from the matching league category
+    const targetLeagueId = CUP_TO_LEAGUE_MAP[leagueId] !== undefined
+        ? CUP_TO_LEAGUE_MAP[leagueId]
+        : leagueId;
+
+    // Filter channels to only those from the relevant league
+    const relevantChannels = targetLeagueId
+        ? pearlChannels.filter(ch => ch._pearl_league_id === targetLeagueId)
+        : pearlChannels;
+
+    for (const channel of relevantChannels) {
         const channelName = channel.name.toLowerCase();
 
-        // Check if channel has both teams (vs format)
-        const hasHome = homeVariations.some(v => channelName.includes(v));
-        const hasAway = awayVariations.some(v => channelName.includes(v));
+        // Check if channel has both teams (vs format) - best match
+        const hasHome = homeVariations.some(v => v.length >= 4 && channelName.includes(v));
+        const hasAway = awayVariations.some(v => v.length >= 4 && channelName.includes(v));
 
         if (hasHome && hasAway) {
             return {
@@ -549,13 +577,16 @@ function findPearlStreamByChannelMatch(homeTeam, awayTeam, pearlChannels) {
             };
         }
 
-        // For per-team channels, match either team
-        if (hasHome || hasAway) {
-            return {
-                stream_id: channel.stream_id,
-                channel_name: channel.name,
-                provider: 'pearl'
-            };
+        // For per-team channels (like "LA LIGA - Atletico Madrid"), match either team
+        // BUT only if channel is from the correct league category
+        if (channel._pearl_league_id && channel._pearl_league_id === targetLeagueId) {
+            if (hasHome || hasAway) {
+                return {
+                    stream_id: channel.stream_id,
+                    channel_name: channel.name,
+                    provider: 'pearl'
+                };
+            }
         }
     }
 
@@ -791,8 +822,19 @@ exports.getTodayFixtures = async (req, res) => {
         }
 
         // Step 4b: PearlIPTV fallback - find matches not yet matched
+        // ONLY try Pearl for leagues that Pearl supports (or cup competitions with overlapping teams)
+        const pearlSupportedOrCupLeagues = new Set([
+            ...PEARL_SUPPORTED_LEAGUES,
+            ...Object.keys(CUP_TO_LEAGUE_MAP).map(Number)
+        ]);
+
         for (const fixture of allFixtures) {
             if (usedFixtureIds.has(fixture.fixture.id)) continue;
+
+            const fixtureLeagueId = fixture.league.id;
+
+            // Skip leagues that Pearl doesn't support at all
+            if (!pearlSupportedOrCupLeagues.has(fixtureLeagueId)) continue;
 
             // Try La Liga team mapping first
             const pearlStream = findPearlStreamForFixture(fixture);
@@ -841,7 +883,8 @@ exports.getTodayFixtures = async (req, res) => {
             const pearlChannelMatch = findPearlStreamByChannelMatch(
                 fixture.teams.home.name,
                 fixture.teams.away.name,
-                pearlChannels
+                pearlChannels,
+                fixture.league.id
             );
             if (pearlChannelMatch) {
                 usedFixtureIds.add(fixture.fixture.id);
@@ -1013,14 +1056,23 @@ exports.getLiveFixtures = async (req, res) => {
         }
 
         // PearlIPTV fallback for live fixtures
+        const pearlSupportedOrCupLeaguesLive = new Set([
+            ...PEARL_SUPPORTED_LEAGUES,
+            ...Object.keys(CUP_TO_LEAGUE_MAP).map(Number)
+        ]);
+
         for (const fixture of liveFixtures) {
             if (usedFixtureIds.has(fixture.fixture.id)) continue;
+
+            // Skip leagues that Pearl doesn't support
+            if (!pearlSupportedOrCupLeaguesLive.has(fixture.league.id)) continue;
 
             const pearlStream = findPearlStreamForFixture(fixture);
             const pearlMatch = pearlStream || findPearlStreamByChannelMatch(
                 fixture.teams.home.name,
                 fixture.teams.away.name,
-                pearlChannels
+                pearlChannels,
+                fixture.league.id
             );
 
             if (pearlMatch) {
@@ -1152,15 +1204,19 @@ exports.getFixtureById = async (req, res) => {
         }
 
         // PearlIPTV fallback if SphereIPTV didn't match
-        if (!matchedStream) {
-            // Try La Liga team mapping
+        const fixtureLeagueId = fixture.league.id;
+        const isPearlSupported = PEARL_SUPPORTED_LEAGUES.has(fixtureLeagueId) ||
+            CUP_TO_LEAGUE_MAP[fixtureLeagueId] !== undefined;
+
+        if (!matchedStream && isPearlSupported) {
+            // Try La Liga / Copa del Rey team mapping
             const pearlStream = findPearlStreamForFixture(fixture);
             if (pearlStream) {
                 matchedStream = pearlStream;
             } else {
                 // Try PearlIPTV channel matching
                 const pearlChannels = await fetchPearlIPTVChannels();
-                const pearlChannelMatch = findPearlStreamByChannelMatch(homeTeam, awayTeam, pearlChannels);
+                const pearlChannelMatch = findPearlStreamByChannelMatch(homeTeam, awayTeam, pearlChannels, fixtureLeagueId);
                 if (pearlChannelMatch) {
                     matchedStream = pearlChannelMatch;
                 }
