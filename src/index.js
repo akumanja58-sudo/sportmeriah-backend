@@ -14,12 +14,14 @@ const nbaRoutes = require('./routes/basketball');
 const footballRoutes = require('./routes/football');
 const tennisRoutes = require('./routes/tennisRoutes');
 const streamProxy = require('./routes/streamProxy');
+const streamsRoutes = require('./routes/streams');
 
 app.use('/api/fixtures', fixturesRoutes);
 app.use('/api/basketball', nbaRoutes);
 app.use('/api/football', footballRoutes);
 app.use('/api/tennis', tennisRoutes);
 app.use('/api/stream', streamProxy);
+app.use('/api/streams', streamsRoutes);
 
 
 // Health check
