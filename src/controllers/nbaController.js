@@ -4,18 +4,34 @@ const axios = require('axios');
 const API_BASKETBALL_KEY = process.env.FOOTBALL_API_KEY;
 const API_BASKETBALL_URL = 'https://v1.basketball.api-sports.io';
 
-// IPTV configuration
-const IPTV_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
-const IPTV_USER = process.env.IPTV_USER || '8297117';
-const IPTV_PASS = process.env.IPTV_PASS || '4501185';
-const IPTV_PROTOCOL = process.env.IPTV_PROTOCOL || 'https';
+// ========================
+// IPTV CONFIGURATIONS
+// ========================
 
-// Basketball IPTV Categories
-const BASKETBALL_CATEGORIES = [
-    { id: '135', name: 'US REAL NBA', priority: 1 },
-];
+// SphereIPTV (existing)
+const SPHERE_CONFIG = {
+    server: process.env.IPTV_SERVER || 's.rocketdns.info',
+    username: process.env.IPTV_USER || '8297117',
+    password: process.env.IPTV_PASS || '4501185',
+    protocol: process.env.IPTV_PROTOCOL || 'https',
+    categories: [
+        { id: '135', name: 'US REAL NBA', priority: 2 }
+    ]
+};
 
-// Sports TV Category 122
+// PearlIPTV (NEW - has better NBA coverage)
+const PEARL_CONFIG = {
+    server: 'pearlhost2.one',
+    port: '80',
+    username: 'pearliptv629',
+    password: '6sa363brvr',
+    protocol: 'http',
+    categories: [
+        { id: '688', name: 'NBA', priority: 1 }  // Priority 1 = check first
+    ]
+};
+
+// Sports TV Category (from Sphere)
 const SPORTS_TV_CATEGORY = '122';
 
 // Sports TV channels for Basketball
@@ -76,24 +92,35 @@ const TEAM_ALIASES = {
     'san antonio spurs': ['spurs', 'san antonio', 'sa spurs', 'sas'],
 };
 
-// Get all basketball matches
+// ========================
+// MAIN ENDPOINT
+// ========================
+
 const getBasketballMatches = async (req, res) => {
     try {
-        const [fixtures, iptvChannels, sportsTVChannels] = await Promise.all([
+        // Fetch all data in parallel
+        const [fixtures, pearlChannels, sphereChannels, sportsTVChannels] = await Promise.all([
             fetchNBAFixtures(),
-            fetchIPTVChannels(),
+            fetchPearlIPTVChannels(),
+            fetchSphereIPTVChannels(),
             fetchSportsTVChannels()
         ]);
 
-        const matchedFixtures = matchFixturesWithStreams(fixtures, iptvChannels);
+        // Combine all IPTV channels (Pearl first - better coverage)
+        const allChannels = [...pearlChannels, ...sphereChannels];
+
+        // Match fixtures with streams
+        const matchedFixtures = matchFixturesWithStreams(fixtures, allChannels);
+
         const liveMatches = matchedFixtures.filter(m => m.status === 'LIVE');
         const upcomingMatches = matchedFixtures.filter(m => m.status === 'UPCOMING');
         const finishedMatches = matchedFixtures.filter(m => m.status === 'FINISHED');
 
+        // Get unmatched channels for Extra Channels section
         const matchedStreamIds = new Set(matchedFixtures.filter(m => m.stream).map(m => m.stream.id));
-        const unmatchedChannels = iptvChannels
+        const unmatchedChannels = allChannels
             .filter(ch => !matchedStreamIds.has(ch.id))
-            .filter(ch => /\bvs\b/i.test(ch.name))
+            .filter(ch => /\bvs\b/i.test(ch.name) || /\b@\b/.test(ch.name))
             .slice(0, 30);
 
         res.json({
@@ -106,6 +133,8 @@ const getBasketballMatches = async (req, res) => {
                 upcoming: upcomingMatches.length,
                 finished: finishedMatches.length,
                 withStreams: matchedFixtures.filter(m => m.stream).length,
+                pearlStreams: pearlChannels.length,
+                sphereStreams: sphereChannels.length,
                 sportsTVChannels: sportsTVChannels.length
             },
             matches: {
@@ -122,11 +151,95 @@ const getBasketballMatches = async (req, res) => {
     }
 };
 
+// ========================
+// FETCH FUNCTIONS
+// ========================
+
+// Fetch PearlIPTV channels (NEW)
+const fetchPearlIPTVChannels = async () => {
+    const allChannels = [];
+
+    for (const category of PEARL_CONFIG.categories) {
+        try {
+            const url = `${PEARL_CONFIG.protocol}://${PEARL_CONFIG.server}:${PEARL_CONFIG.port}/player_api.php`;
+            const response = await axios.get(url, {
+                params: {
+                    username: PEARL_CONFIG.username,
+                    password: PEARL_CONFIG.password,
+                    action: 'get_live_streams',
+                    category_id: category.id
+                },
+                timeout: 10000
+            });
+
+            if (response.data && Array.isArray(response.data)) {
+                const channels = response.data
+                    .filter(ch => ch.name && (ch.name.includes('vs') || ch.name.includes('@') || ch.name.includes('VS')))
+                    .map(ch => ({
+                        id: ch.stream_id,
+                        name: ch.name,
+                        category: category.name,
+                        icon: ch.stream_icon || null,
+                        provider: 'pearl',
+                        priority: category.priority
+                    }));
+                allChannels.push(...channels);
+            }
+        } catch (err) {
+            console.error(`Error fetching Pearl category ${category.id}:`, err.message);
+        }
+    }
+
+    return allChannels;
+};
+
+// Fetch SphereIPTV channels (existing)
+const fetchSphereIPTVChannels = async () => {
+    const allChannels = [];
+
+    for (const category of SPHERE_CONFIG.categories) {
+        try {
+            const url = `${SPHERE_CONFIG.protocol}://${SPHERE_CONFIG.server}/player_api.php`;
+            const response = await axios.get(url, {
+                params: {
+                    username: SPHERE_CONFIG.username,
+                    password: SPHERE_CONFIG.password,
+                    action: 'get_live_streams',
+                    category_id: category.id
+                },
+                timeout: 10000
+            });
+
+            if (response.data && Array.isArray(response.data)) {
+                const channels = response.data.map(ch => ({
+                    id: ch.stream_id,
+                    name: ch.name,
+                    category: category.name,
+                    icon: ch.stream_icon || null,
+                    provider: 'sphere',
+                    priority: category.priority
+                }));
+                allChannels.push(...channels);
+            }
+        } catch (err) {
+            console.error(`Error fetching Sphere category ${category.id}:`, err.message);
+        }
+    }
+
+    return allChannels;
+};
+
 // Fetch Sports TV channels
 const fetchSportsTVChannels = async () => {
     try {
-        const response = await axios.get(`${IPTV_PROTOCOL}://${IPTV_SERVER}/player_api.php`, {
-            params: { username: IPTV_USER, password: IPTV_PASS, action: 'get_live_streams', category_id: SPORTS_TV_CATEGORY },
+        const url = `${SPHERE_CONFIG.protocol}://${SPHERE_CONFIG.server}/player_api.php`;
+        const response = await axios.get(url, {
+            params: {
+                username: SPHERE_CONFIG.username,
+                password: SPHERE_CONFIG.password,
+                action: 'get_live_streams',
+                category_id: SPORTS_TV_CATEGORY
+            },
             timeout: 10000
         });
 
@@ -142,7 +255,8 @@ const fetchSportsTVChannels = async () => {
                         icon: ch.stream_icon || null,
                         league: predefined?.league || 'Sports',
                         category: 'Sports TV',
-                        type: 'tv_channel'
+                        type: 'tv_channel',
+                        provider: 'sphere'
                     };
                 });
         }
@@ -153,7 +267,7 @@ const fetchSportsTVChannels = async () => {
     }
 };
 
-// Fetch NBA fixtures
+// Fetch NBA fixtures from API-Sports
 const fetchNBAFixtures = async () => {
     try {
         const today = new Date().toISOString().split('T')[0];
@@ -191,32 +305,23 @@ const fetchNBAFixtures = async () => {
     }
 };
 
-// Fetch IPTV channels
-const fetchIPTVChannels = async () => {
-    const allChannels = [];
-    for (const category of BASKETBALL_CATEGORIES) {
-        try {
-            const response = await axios.get(`${IPTV_PROTOCOL}://${IPTV_SERVER}/player_api.php`, {
-                params: { username: IPTV_USER, password: IPTV_PASS, action: 'get_live_streams', category_id: category.id },
-                timeout: 10000
-            });
-            if (response.data && Array.isArray(response.data)) {
-                allChannels.push(...response.data.map(ch => ({
-                    id: ch.stream_id, name: ch.name, category: category.name, icon: ch.stream_icon || null
-                })));
-            }
-        } catch (err) {
-            console.error(`Error fetching category ${category.id}:`, err.message);
-        }
-    }
-    return allChannels;
-};
+// ========================
+// MATCHING LOGIC
+// ========================
 
-// Match fixtures with streams
 const matchFixturesWithStreams = (fixtures, channels) => {
     return fixtures.map(fixture => {
         const stream = findMatchingChannel(fixture, channels);
-        return { ...fixture, stream: stream ? { id: stream.id, name: stream.name, category: stream.category } : null, hasStream: !!stream };
+        return {
+            ...fixture,
+            stream: stream ? {
+                id: stream.id,
+                name: stream.name,
+                category: stream.category,
+                provider: stream.provider
+            } : null,
+            hasStream: !!stream
+        };
     });
 };
 
@@ -224,9 +329,17 @@ const findMatchingChannel = (fixture, channels) => {
     const homeAliases = getTeamAliases(fixture.homeTeam.name.toLowerCase());
     const awayAliases = getTeamAliases(fixture.awayTeam.name.toLowerCase());
 
-    for (const channel of channels) {
+    // Sort channels by priority (lower = better)
+    const sortedChannels = [...channels].sort((a, b) => (a.priority || 99) - (b.priority || 99));
+
+    for (const channel of sortedChannels) {
         const name = channel.name.toLowerCase();
-        if (homeAliases.some(a => name.includes(a)) && awayAliases.some(a => name.includes(a))) {
+
+        // Check if both teams are in the channel name
+        const hasHome = homeAliases.some(a => name.includes(a));
+        const hasAway = awayAliases.some(a => name.includes(a));
+
+        if (hasHome && hasAway) {
             return channel;
         }
     }
@@ -244,40 +357,15 @@ const getTeamAliases = (name) => {
 };
 
 const mapStatus = (status) => {
-    if (['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'HT', 'LIVE'].includes(status)) return 'LIVE';
+    if (['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'HT', 'LIVE', 'BT'].includes(status)) return 'LIVE';
     if (['FT', 'AOT', 'POST'].includes(status)) return 'FINISHED';
     return 'UPCOMING';
 };
 
-// Get stream info
-const getStreamInfo = async (req, res) => {
-    try {
-        const { streamId } = req.params;
-        const [iptvChannels, sportsTVChannels] = await Promise.all([fetchIPTVChannels(), fetchSportsTVChannels()]);
-        const channel = [...iptvChannels, ...sportsTVChannels].find(ch => ch.id === parseInt(streamId));
+// ========================
+// SINGLE MATCH & STREAM ENDPOINTS
+// ========================
 
-        if (!channel) return res.status(404).json({ success: false, error: 'Stream not found' });
-
-        const streamUrl = `${IPTV_PROTOCOL}://${IPTV_SERVER}/live/${IPTV_USER}/${IPTV_PASS}/${streamId}.m3u8`;
-        const fixtures = await fetchNBAFixtures();
-        const match = fixtures.find(f => {
-            const name = channel.name.toLowerCase();
-            const homeAliases = getTeamAliases(f.homeTeam.name.toLowerCase());
-            const awayAliases = getTeamAliases(f.awayTeam.name.toLowerCase());
-            return homeAliases.some(a => name.includes(a)) && awayAliases.some(a => name.includes(a));
-        });
-
-        res.json({
-            success: true,
-            stream: { id: channel.id, name: channel.name, url: streamUrl, category: channel.category, icon: channel.icon, league: channel.league, type: channel.type || 'match' },
-            match: match || null
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-};
-
-// Get single match by game ID
 const getBasketballMatch = async (req, res) => {
     try {
         const { id } = req.params;
@@ -288,22 +376,92 @@ const getBasketballMatch = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Match not found' });
         }
 
-        const iptvChannels = await fetchIPTVChannels();
-        const stream = findMatchingChannel(match, iptvChannels);
+        // Fetch all channels
+        const [pearlChannels, sphereChannels] = await Promise.all([
+            fetchPearlIPTVChannels(),
+            fetchSphereIPTVChannels()
+        ]);
+
+        const allChannels = [...pearlChannels, ...sphereChannels];
+        const stream = findMatchingChannel(match, allChannels);
 
         res.json({
             success: true,
-            match: { ...match, stream: stream ? { id: stream.id, name: stream.name, category: stream.category } : null }
+            match: {
+                ...match,
+                stream: stream ? {
+                    id: stream.id,
+                    name: stream.name,
+                    category: stream.category,
+                    provider: stream.provider
+                } : null
+            }
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 };
 
-// Get stream by stream ID (alias for getStreamInfo)
 const getBasketballStream = async (req, res) => {
-    req.params.streamId = req.params.streamId;
-    return getStreamInfo(req, res);
+    try {
+        const { streamId } = req.params;
+        const provider = req.query.provider || 'sphere';
+
+        // Fetch channels based on provider
+        let channels = [];
+        if (provider === 'pearl') {
+            channels = await fetchPearlIPTVChannels();
+        } else {
+            channels = await fetchSphereIPTVChannels();
+        }
+
+        // Also check Sports TV
+        const sportsTVChannels = await fetchSportsTVChannels();
+        const allChannels = [...channels, ...sportsTVChannels];
+
+        const channel = allChannels.find(ch => ch.id === parseInt(streamId));
+
+        if (!channel) {
+            return res.status(404).json({ success: false, error: 'Stream not found' });
+        }
+
+        // Build stream URL based on provider
+        let streamUrl;
+        if (channel.provider === 'pearl') {
+            streamUrl = `${PEARL_CONFIG.protocol}://${PEARL_CONFIG.server}:${PEARL_CONFIG.port}/live/${PEARL_CONFIG.username}/${PEARL_CONFIG.password}/${streamId}.m3u8`;
+        } else {
+            streamUrl = `${SPHERE_CONFIG.protocol}://${SPHERE_CONFIG.server}/live/${SPHERE_CONFIG.username}/${SPHERE_CONFIG.password}/${streamId}.m3u8`;
+        }
+
+        // Try to find matching fixture
+        const fixtures = await fetchNBAFixtures();
+        const match = fixtures.find(f => {
+            const name = channel.name.toLowerCase();
+            const homeAliases = getTeamAliases(f.homeTeam.name.toLowerCase());
+            const awayAliases = getTeamAliases(f.awayTeam.name.toLowerCase());
+            return homeAliases.some(a => name.includes(a)) && awayAliases.some(a => name.includes(a));
+        });
+
+        res.json({
+            success: true,
+            stream: {
+                id: channel.id,
+                name: channel.name,
+                url: streamUrl,
+                category: channel.category,
+                icon: channel.icon,
+                provider: channel.provider,
+                type: channel.type || 'match'
+            },
+            match: match || null
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 };
 
-module.exports = { getBasketballMatches, getBasketballMatch, getBasketballStream, getStreamInfo };
+module.exports = {
+    getBasketballMatches,
+    getBasketballMatch,
+    getBasketballStream
+};
