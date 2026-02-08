@@ -36,23 +36,44 @@ const BASKETBALL_TV_CHANNELS = [
     { stream_id: 4443, name: 'Big Ten Network UHD', league: 'NCAA' },
 ];
 
-// NBA Team aliases
+// NBA Team aliases - LENGKAP semua 30 tim + singkatan
 const TEAM_ALIASES = {
-    'los angeles lakers': ['lakers', 'la lakers'],
-    'los angeles clippers': ['clippers', 'la clippers'],
-    'golden state warriors': ['warriors', 'golden state', 'gsw'],
-    'new york knicks': ['knicks', 'ny knicks'],
-    'brooklyn nets': ['nets', 'brooklyn'],
-    'boston celtics': ['celtics', 'boston'],
-    'miami heat': ['heat', 'miami'],
-    'chicago bulls': ['bulls', 'chicago'],
-    'philadelphia 76ers': ['76ers', 'sixers', 'philadelphia'],
-    'dallas mavericks': ['mavericks', 'mavs', 'dallas'],
-    'houston rockets': ['rockets', 'houston'],
-    'denver nuggets': ['nuggets', 'denver'],
-    'phoenix suns': ['suns', 'phoenix'],
-    'milwaukee bucks': ['bucks', 'milwaukee'],
-    'cleveland cavaliers': ['cavaliers', 'cavs', 'cleveland'],
+    // Eastern Conference - Atlantic
+    'boston celtics': ['celtics', 'boston', 'bos'],
+    'brooklyn nets': ['nets', 'brooklyn', 'bkn'],
+    'new york knicks': ['knicks', 'ny knicks', 'nyk', 'new york'],
+    'philadelphia 76ers': ['76ers', 'sixers', 'philadelphia', 'phi', 'philly'],
+    'toronto raptors': ['raptors', 'toronto', 'tor'],
+    // Eastern Conference - Central
+    'chicago bulls': ['bulls', 'chicago', 'chi'],
+    'cleveland cavaliers': ['cavaliers', 'cavs', 'cleveland', 'cle'],
+    'detroit pistons': ['pistons', 'detroit', 'det'],
+    'indiana pacers': ['pacers', 'indiana', 'ind'],
+    'milwaukee bucks': ['bucks', 'milwaukee', 'mil'],
+    // Eastern Conference - Southeast
+    'atlanta hawks': ['hawks', 'atlanta', 'atl'],
+    'charlotte hornets': ['hornets', 'charlotte', 'cha'],
+    'miami heat': ['heat', 'miami', 'mia'],
+    'orlando magic': ['magic', 'orlando', 'orl'],
+    'washington wizards': ['wizards', 'washington', 'was', 'wiz'],
+    // Western Conference - Northwest
+    'denver nuggets': ['nuggets', 'denver', 'den'],
+    'minnesota timberwolves': ['timberwolves', 'wolves', 'minnesota', 'min'],
+    'oklahoma city thunder': ['thunder', 'okc thunder', 'okc', 'oklahoma'],
+    'portland trail blazers': ['trail blazers', 'blazers', 'portland', 'por'],
+    'utah jazz': ['jazz', 'utah', 'uta'],
+    // Western Conference - Pacific
+    'golden state warriors': ['warriors', 'golden state', 'gsw warriors', 'gsw', 'gs warriors'],
+    'los angeles clippers': ['clippers', 'la clippers', 'lac clippers', 'lac'],
+    'los angeles lakers': ['lakers', 'la lakers', 'lal lakers', 'lal'],
+    'phoenix suns': ['suns', 'phoenix', 'phx'],
+    'sacramento kings': ['kings', 'sacramento', 'sac'],
+    // Western Conference - Southwest
+    'dallas mavericks': ['mavericks', 'mavs', 'dallas', 'dal'],
+    'houston rockets': ['rockets', 'houston', 'hou rockets', 'hou'],
+    'memphis grizzlies': ['grizzlies', 'memphis', 'mem'],
+    'new orleans pelicans': ['pelicans', 'new orleans', 'nop', 'no pelicans'],
+    'san antonio spurs': ['spurs', 'san antonio', 'sa spurs', 'sas'],
 };
 
 // Get all basketball matches
@@ -141,12 +162,12 @@ const fetchNBAFixtures = async () => {
         const [todayRes, tomorrowRes] = await Promise.all([
             axios.get(`${API_BASKETBALL_URL}/games`, {
                 headers: { 'x-apisports-key': API_BASKETBALL_KEY },
-                params: { league: 12, season: '2025-2026', date: today },
+                params: { league: 12, season: '2024-2025', date: today },
                 timeout: 15000
             }),
             axios.get(`${API_BASKETBALL_URL}/games`, {
                 headers: { 'x-apisports-key': API_BASKETBALL_KEY },
-                params: { league: 12, season: '2025-2026', date: tomorrow },
+                params: { league: 12, season: '2024-2025', date: tomorrow },
                 timeout: 15000
             })
         ]);
