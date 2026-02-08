@@ -2,12 +2,22 @@ const express = require('express');
 const router = express.Router();
 const https = require('https');
 const http = require('http');
+const axios = require('axios');
 
 // IPTV Config - SphereIPTV
 const IPTV_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
 const IPTV_USER = process.env.IPTV_USER || '8297117';
 const IPTV_PASS = process.env.IPTV_PASS || '4501185';
 const IPTV_PROTOCOL = process.env.IPTV_PROTOCOL || 'https';
+
+// PearlIPTV Config
+const PEARL_SERVER = 'pearlhost2.one';
+const PEARL_PORT = '80';
+const PEARL_USER = 'pearliptv629';
+const PEARL_PASS = '6sa363brvr';
+
+// VPS Config (for FFmpeg restream)
+const VPS_URL = 'http://173.249.27.15';
 
 // Browser-like headers
 const BROWSER_HEADERS = {
@@ -132,6 +142,133 @@ router.options('*', (req, res) => {
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     res.sendStatus(200);
+});
+
+// ========== PROXY PEARL M3U8 (VPS Restream) ==========
+router.get('/pearl/:streamId.m3u8', async (req, res) => {
+    const { streamId } = req.params;
+
+    if (!streamId) {
+        return res.status(400).json({ error: 'Stream ID required' });
+    }
+
+    // VPS HLS URL (from FFmpeg restream)
+    const vpsUrl = `${VPS_URL}/hls/pearl_${streamId}.m3u8`;
+    const proxyBaseUrl = process.env.BACKEND_URL || 'https://sportmeriah-backend-production.up.railway.app';
+
+    console.log(`[Pearl Proxy] Fetching m3u8: ${vpsUrl}`);
+
+    try {
+        const response = await axios.get(vpsUrl, {
+            responseType: 'text',
+            timeout: 10000,
+            headers: { 'User-Agent': 'SportMeriah/1.0' }
+        });
+
+        let m3u8Content = response.data;
+
+        // Rewrite .ts segment URLs to go through our proxy
+        // e.g., "pearl_290358_00001.ts" -> "/api/stream/pearl/segment/pearl_290358_00001.ts"
+        m3u8Content = m3u8Content.replace(/^(pearl_[0-9]+_[0-9]+\.ts)$/gm,
+            `${proxyBaseUrl}/api/stream/pearl/segment/$1`);
+
+        res.set({
+            'Content-Type': 'application/vnd.apple.mpegurl',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-cache'
+        });
+        res.send(m3u8Content);
+
+    } catch (error) {
+        console.error('[Pearl Proxy] Error:', error.message);
+        res.status(502).json({ error: 'Pearl stream not available', details: error.message });
+    }
+});
+
+// ========== PROXY PEARL TS SEGMENTS ==========
+router.get('/pearl/segment/:filename', async (req, res) => {
+    const { filename } = req.params;
+
+    if (!filename) {
+        return res.status(400).json({ error: 'Filename required' });
+    }
+
+    const vpsUrl = `${VPS_URL}/hls/${filename}`;
+    console.log(`[Pearl Proxy] Fetching segment: ${vpsUrl}`);
+
+    try {
+        const response = await axios.get(vpsUrl, {
+            responseType: 'stream',
+            timeout: 30000,
+            headers: { 'User-Agent': 'SportMeriah/1.0' }
+        });
+
+        res.set({
+            'Content-Type': 'video/mp2t',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'public, max-age=2'
+        });
+
+        response.data.pipe(res);
+
+    } catch (error) {
+        console.error('[Pearl Proxy] Segment error:', error.message);
+        res.status(502).json({ error: 'Segment not available' });
+    }
+});
+
+// ========== PROXY PEARL DIRECT (Alternative - no VPS) ==========
+router.get('/pearl-direct/:streamId.m3u8', async (req, res) => {
+    const { streamId } = req.params;
+
+    if (!streamId) {
+        return res.status(400).json({ error: 'Stream ID required' });
+    }
+
+    const pearlUrl = `http://${PEARL_SERVER}:${PEARL_PORT}/live/${PEARL_USER}/${PEARL_PASS}/${streamId}.m3u8`;
+    console.log(`[Pearl Direct] Fetching: ${pearlUrl}`);
+
+    try {
+        const { response, finalUrl } = await fetchWithRedirectAndUrl(pearlUrl);
+
+        if (response.statusCode !== 200) {
+            console.error(`[Pearl Direct] Status: ${response.statusCode}`);
+            return res.status(response.statusCode).send('Stream not available');
+        }
+
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'no-cache');
+
+        const chunks = [];
+        response.on('data', chunk => chunks.push(chunk));
+        response.on('end', () => {
+            let data = Buffer.concat(chunks).toString('utf8');
+
+            // Get base URL from final redirected URL
+            let baseUrl;
+            try {
+                const urlObj = new URL(finalUrl);
+                baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+            } catch (e) {
+                baseUrl = `http://${PEARL_SERVER}:${PEARL_PORT}`;
+            }
+
+            const proxyBaseUrl = process.env.BACKEND_URL || 'https://sportmeriah-backend-production.up.railway.app';
+
+            // Rewrite segment URLs
+            data = data.replace(/^(\/[^\s\r\n]+\.ts)$/gm, (match, path) => {
+                const fullUrl = `${baseUrl}${path}`;
+                return `${proxyBaseUrl}/api/stream/segment?url=${encodeURIComponent(fullUrl)}`;
+            });
+
+            res.send(data);
+        });
+
+    } catch (error) {
+        console.error('[Pearl Direct] Error:', error.message);
+        res.status(500).json({ error: 'Failed to fetch Pearl stream' });
+    }
 });
 
 // ========== HELPER: Fetch with redirect and return final URL ==========
