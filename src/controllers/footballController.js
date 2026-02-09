@@ -102,23 +102,25 @@ const FOOTBALL_TV_CHANNELS = [
 // 'sphere' = SphereIPTV dulu, fallback PearlIPTV
 // 'pearl' = PearlIPTV dulu, fallback SphereIPTV
 const LEAGUE_PROVIDER = {
-    140: 'sphere',   // La Liga
-    135: 'sphere',   // Serie A
-    78: 'sphere',    // Bundesliga
-    61: 'sphere',    // Ligue 1
-    2: 'sphere',     // Champions League
-    3: 'sphere',     // Europa League
-    848: 'sphere',   // Conference League
-    307: 'sphere',   // Saudi Pro League
-    39: 'sphere',    // EPL
+    39: 'sphere',    // EPL - Sphere punya "vs" format
     45: 'sphere',    // FA Cup
     48: 'sphere',    // League Cup
-    143: 'sphere',   // Copa del Rey
-    137: 'sphere',   // Coppa Italia
-    529: 'sphere',   // Super Cup
-    531: 'sphere',   // UEFA Super Cup
     253: 'sphere',   // MLS
     262: 'sphere',   // Liga MX
+
+    // Pearl punya channel dedicated per liga:
+    140: 'pearl',    // La Liga
+    135: 'pearl',    // Serie A
+    78: 'pearl',     // Bundesliga
+    61: 'pearl',     // Ligue 1
+    2: 'pearl',      // Champions League
+    3: 'pearl',      // Europa League
+    848: 'pearl',    // Conference League
+    307: 'pearl',    // Saudi Pro League
+    143: 'pearl',    // Copa del Rey (pakai La Liga channels)
+    137: 'pearl',    // Coppa Italia (pakai Serie A channels)
+    529: 'sphere',   // Super Cup
+    531: 'sphere',   // UEFA Super Cup
     94: 'sphere',    // Primeira Liga
 };
 
