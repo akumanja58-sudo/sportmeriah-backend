@@ -144,6 +144,24 @@ exports.stopPearlStream = async (req, res) => {
     }
 };
 
+// Stop ALL Pearl streams
+exports.stopAllPearlStreams = async (req, res) => {
+    try {
+        const response = await axios.get(`${VPS_API_URL}/stream/pearl/stop-all`, {
+            headers: { 'x-api-key': VPS_API_KEY },
+            timeout: 10000
+        });
+
+        res.json({
+            success: true,
+            message: response.data.message
+        });
+    } catch (error) {
+        console.error('Stop all Pearl streams error:', error.message);
+        res.status(500).json({ error: 'Failed to stop all streams' });
+    }
+};
+
 // Get PearlIPTV stream status
 exports.getPearlStatus = async (req, res) => {
     try {

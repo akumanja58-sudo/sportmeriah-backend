@@ -34,4 +34,7 @@ router.get('/pearl/status', streamController.getPearlStatus);
 // Get specific Pearl stream status
 router.get('/pearl/status/:id', streamController.getPearlStreamStatus);
 
+// Stop ALL Pearl streams (for switching channels)
+router.get('/pearl/stop-all', streamController.stopAllPearlStreams);
+
 module.exports = router;
