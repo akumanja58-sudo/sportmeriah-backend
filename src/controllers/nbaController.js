@@ -17,6 +17,7 @@ const SPHERE_PROTOCOL = process.env.IPTV_PROTOCOL || 'http';
 
 // VPS Config (HLS proxy)
 const VPS_IP = process.env.VPS_IP || '173.249.27.15';
+const VPS_STREAM_BASE = process.env.VPS_STREAM_URL || 'https://stream.nobarmeriah.com';
 
 // ========================
 // CATEGORY CONFIGS
@@ -432,7 +433,7 @@ const getStreamInfo = async (req, res) => {
         const { streamId } = req.params;
 
         // Stream URL via VPS HLS proxy (Sphere only for basketball)
-        const streamUrl = `http://${VPS_IP}/hls/sphere_${streamId}.m3u8`;
+        const streamUrl = `${VPS_STREAM_BASE}/hls/sphere_${streamId}.m3u8`;
 
         // Try to find channel info
         const channels = await fetchSphereChannels(SPHERE_BASKETBALL_CATEGORIES);

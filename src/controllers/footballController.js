@@ -23,6 +23,7 @@ const PEARL_PORT = process.env.PEARL_PORT || '80';
 
 // VPS Config
 const VPS_IP = process.env.VPS_IP || '173.249.27.15';
+const VPS_STREAM_BASE = process.env.VPS_STREAM_URL || 'https://stream.nobarmeriah.com';
 
 // ========================
 // CATEGORY CONFIGS
@@ -741,14 +742,14 @@ const getStreamInfo = async (req, res) => {
 
         if (provider === 'pearl') {
             // PearlIPTV - proxy through VPS
-            streamUrl = `http://${VPS_IP}/hls/pearl_${streamId}.m3u8`;
+            streamUrl = `${VPS_STREAM_BASE}/hls/pearl_${streamId}.m3u8`;
 
             // Try to find channel info
             const pearlChannels = await fetchPearlIPTVChannels();
             channel = pearlChannels.find(ch => ch.id === parseInt(streamId));
         } else {
             // SphereIPTV - proxy through VPS
-            streamUrl = `http://${VPS_IP}/hls/sphere_${streamId}.m3u8`;
+            streamUrl = `${VPS_STREAM_BASE}/hls/sphere_${streamId}.m3u8`;
 
             const [iptvChannels, sportsTVChannels] = await Promise.all([
                 fetchSphereIPTVChannels(),
