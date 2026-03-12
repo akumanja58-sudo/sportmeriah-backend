@@ -8,16 +8,17 @@ const API_SPORTS_URL = 'https://v3.football.api-sports.io';
 // IPTV PROVIDER CONFIGS
 // ========================
 
-// SphereIPTV (existing)
+// SphereIPTV (updated credentials)
 const SPHERE_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
-const SPHERE_USER = process.env.IPTV_USER || '8297117';
-const SPHERE_PASS = process.env.IPTV_PASS || '4501185';
-const SPHERE_PROTOCOL = process.env.IPTV_PROTOCOL || 'https';
+const SPHERE_PORT = process.env.IPTV_PORT || '8080';
+const SPHERE_USER = process.env.IPTV_USER || '5986529';
+const SPHERE_PASS = process.env.IPTV_PASS || '0044003';
+const SPHERE_PROTOCOL = process.env.IPTV_PROTOCOL || 'http';
 
-// PearlIPTV (new)
+// PearlIPTV (updated credentials)
 const PEARL_SERVER = process.env.PEARL_SERVER || 'pearlhost2.one';
-const PEARL_USER = process.env.PEARL_USER || 'pearliptv629';
-const PEARL_PASS = process.env.PEARL_PASS || '6sa363brvr';
+const PEARL_USER = process.env.PEARL_USER || 'pearliptv669';
+const PEARL_PASS = process.env.PEARL_PASS || 'gwb66he3zc';
 const PEARL_PORT = process.env.PEARL_PORT || '80';
 
 // VPS Config
@@ -347,7 +348,7 @@ const fetchSphereIPTVChannels = async () => {
 
     for (const category of SPHERE_FOOTBALL_CATEGORIES) {
         try {
-            const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}/player_api.php`, {
+            const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}:${SPHERE_PORT}/player_api.php`, {
                 params: {
                     username: SPHERE_USER,
                     password: SPHERE_PASS,
@@ -430,7 +431,7 @@ const fetchPearlIPTVChannels = async () => {
 // Fetch Sports TV channels from SphereIPTV Category 122 (unchanged)
 const fetchSportsTVChannels = async () => {
     try {
-        const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}/player_api.php`, {
+        const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}:${SPHERE_PORT}/player_api.php`, {
             params: {
                 username: SPHERE_USER,
                 password: SPHERE_PASS,
@@ -706,8 +707,8 @@ const getStreamInfo = async (req, res) => {
             const pearlChannels = await fetchPearlIPTVChannels();
             channel = pearlChannels.find(ch => ch.id === parseInt(streamId));
         } else {
-            // SphereIPTV - existing logic
-            streamUrl = `${SPHERE_PROTOCOL}://${SPHERE_SERVER}/live/${SPHERE_USER}/${SPHERE_PASS}/${streamId}.m3u8`;
+            // SphereIPTV - proxy through VPS
+            streamUrl = `http://${VPS_IP}/hls/sphere_${streamId}.m3u8`;
 
             const [iptvChannels, sportsTVChannels] = await Promise.all([
                 fetchSphereIPTVChannels(),
