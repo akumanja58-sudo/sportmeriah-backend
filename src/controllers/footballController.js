@@ -34,19 +34,20 @@ const SPHERE_FOOTBALL_CATEGORIES = [
 ];
 
 // PearlIPTV Football Categories - per league
+// league_ids = array of league IDs this category covers (Pearl mixes UEFA comps together)
 const PEARL_FOOTBALL_CATEGORIES = [
-    { id: '1193', name: 'LA LIGA SPORT', league_id: 140, priority: 1 },
-    { id: '1192', name: 'LEAGUES SERIE A', league_id: 135, priority: 1 },
-    { id: '1936', name: 'SERIE A (US)', league_id: 135, priority: 2 },
-    { id: '2281', name: 'BUNDESLIGA PPV', league_id: 78, priority: 1 },
-    { id: '1933', name: 'LIGUE PLUS', league_id: 61, priority: 1 },
-    { id: '1796', name: 'DAZN LIGUE 1', league_id: 61, priority: 2 },
-    { id: '1677', name: 'UEFA CHAMPIONS LEAGUE (UK)', league_id: 2, priority: 1 },
-    { id: '2132', name: 'UEFA CHAMPIONS LEAGUE (CA)', league_id: 2, priority: 2 },
-    { id: '1678', name: 'UEFA EUROPA LEAGUE', league_id: 3, priority: 1 },
-    { id: '1932', name: 'SAUDI PRO LEAGUE', league_id: 307, priority: 1 },
-    { id: '1310', name: 'EPL PREMIER LEAGUE', league_id: 39, priority: 2 }, // backup for EPL
-    { id: '2084', name: 'WORLD FOOTBALL EVENTS', league_id: null, priority: 3 },
+    { id: '1193', name: 'LA LIGA SPORT', league_id: 140, league_ids: [140, 143], priority: 1 },
+    { id: '1192', name: 'LEAGUES SERIE A', league_id: 135, league_ids: [135, 137], priority: 1 },
+    { id: '1936', name: 'SERIE A (US)', league_id: 135, league_ids: [135, 137], priority: 2 },
+    { id: '2281', name: 'BUNDESLIGA PPV', league_id: 78, league_ids: [78], priority: 1 },
+    { id: '1933', name: 'LIGUE PLUS', league_id: 61, league_ids: [61, 66], priority: 1 },
+    { id: '1796', name: 'DAZN LIGUE 1', league_id: 61, league_ids: [61, 66], priority: 2 },
+    { id: '1677', name: 'UEFA CHAMPIONS LEAGUE (UK)', league_id: 2, league_ids: [2, 3, 848], priority: 1 },  // Pearl mixes UCL+UEL+UECL here
+    { id: '2132', name: 'UEFA CHAMPIONS LEAGUE (CA)', league_id: 2, league_ids: [2, 3, 848], priority: 2 },
+    { id: '1678', name: 'UEFA EUROPA LEAGUE', league_id: 3, league_ids: [3, 2, 848], priority: 1 },           // Also has UCL+UECL channels
+    { id: '1932', name: 'SAUDI PRO LEAGUE', league_id: 307, league_ids: [307], priority: 1 },
+    { id: '1310', name: 'EPL PREMIER LEAGUE', league_id: 39, league_ids: [39, 45, 48], priority: 2 },
+    { id: '2084', name: 'WORLD FOOTBALL EVENTS', league_id: null, league_ids: [], priority: 3 },
 ];
 
 // Sports TV Category (Category 122) - Premium Sports Channels (SphereIPTV)
@@ -192,9 +193,10 @@ const TEAM_ALIASES = {
     'west ham': ['west ham united'],
     'nottingham forest': ["nott'm forest", 'nottm forest'],
     'atletico madrid': ['atletico', 'atlético madrid', 'atlético', 'atletico de madrid'],
-    'real madrid': ['real'],
+    'real madrid': ['real madrid'],
     'barcelona': ['barca', 'barça'],
-    'bayern munich': ['bayern', 'bayern münchen', 'bayern munchen'],
+    'bayern munich': ['bayern', 'bayern münchen', 'bayern munchen', 'leverkusen'],
+    'bayer leverkusen': ['leverkusen', 'bayer'],
     'borussia dortmund': ['dortmund', 'bvb'],
     'psg': ['paris saint germain', 'paris saint-germain', 'paris sg'],
     'inter': ['inter milan', 'internazionale'],
@@ -209,6 +211,21 @@ const TEAM_ALIASES = {
     'real sociedad': ['sociedad'],
     'celta vigo': ['celta'],
     'rayo vallecano': ['rayo'],
+    'sporting cp': ['sporting cp', 'sporting lisbon', 'sporting'],
+    'shakhtar donetsk': ['shakhtar', 'shaktar'],
+    'sparta praha': ['sparta prague', 'sparta praha'],
+    'aston villa': ['aston villa', 'villa'],
+    'sc freiburg': ['freiburg'],
+    'sc braga': ['braga'],
+    'fsv mainz 05': ['mainz', 'mainz 05'],
+    'hnk rijeka': ['rijeka'],
+    'aek athens': ['aek athens', 'aek'],
+    'sigma olomouc': ['olomouc', 'sigma'],
+    'lech poznan': ['lech poznan', 'lech poznań'],
+    'raków czestochowa': ['rakow', 'raków', 'czestochowa', 'częstochowa'],
+    'crystal palace': ['crystal palace', 'palace'],
+    'nottingham forest': ["nott'm forest", 'nottm forest', 'forest'],
+    'bodo/glimt': ['bodo glimt', 'bodø glimt', 'bodo/glimt', 'bodø/glimt'],
 };
 
 // ========================
@@ -403,12 +420,14 @@ const fetchPearlIPTVChannels = async () => {
             if (response.data && Array.isArray(response.data)) {
                 const channels = response.data
                     .filter(ch => !isExcludedChannel(ch.name))
-                    .filter(ch => ch.name !== `✦ ✦ ✦ ${category.name} ✦ ✦ ✦`) // Skip header
+                    .filter(ch => !ch.name.includes('✦'))  // Skip all header rows
+                    .filter(ch => ch.name !== 'CA | No Event' && !ch.name.match(/no event/i)) // Skip placeholder channels
                     .map(ch => ({
                         id: ch.stream_id,
                         name: ch.name,
                         category: category.name,
                         league_id: category.league_id,
+                        league_ids: category.league_ids || [],
                         icon: ch.stream_icon || null,
                         provider: 'pearl'
                     }));
@@ -549,21 +568,18 @@ const findPearlStream = (fixture, channels) => {
         return findPearlLaLigaStream(fixture);
     }
 
-    // Check if this league is supported by PearlIPTV at all
-    const supportedLeagueIds = new Set(
-        PEARL_FOOTBALL_CATEGORIES
-            .filter(c => c.league_id !== null)
-            .map(c => c.league_id)
-    );
+    // Build set of all league IDs supported by Pearl (using league_ids arrays)
+    const supportedLeagueIds = new Set();
+    for (const cat of PEARL_FOOTBALL_CATEGORIES) {
+        if (cat.league_ids) {
+            cat.league_ids.forEach(id => supportedLeagueIds.add(id));
+        }
+        if (cat.league_id !== null) {
+            supportedLeagueIds.add(cat.league_id);
+        }
+    }
 
-    // Map cup competitions to their league counterpart
-    const cupToLeague = {
-        137: 135,  // Coppa Italia → Serie A
-        66: 61,    // Coupe de France → Ligue 1
-    };
-    const targetLeagueId = cupToLeague[leagueId] || leagueId;
-
-    if (!supportedLeagueIds.has(targetLeagueId)) {
+    if (!supportedLeagueIds.has(leagueId)) {
         return null; // This league isn't covered by Pearl
     }
 
@@ -572,24 +588,45 @@ const findPearlStream = (fixture, channels) => {
     const homeAliases = getTeamAliases(homeTeam);
     const awayAliases = getTeamAliases(awayTeam);
 
+    // Also add original team name (lowercase) as fallback for short/stripped names
+    const homeFallback = fixture.homeTeam.name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+    const awayFallback = fixture.awayTeam.name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
+    if (homeFallback.length >= 4 && !homeAliases.includes(homeFallback)) homeAliases.push(homeFallback);
+    if (awayFallback.length >= 4 && !awayAliases.includes(awayFallback)) awayAliases.push(awayFallback);
+
     // First pass: "vs" format channels (both teams match) - best quality match
     for (const channel of channels) {
         const channelName = channel.name.toLowerCase();
-        const hasHome = homeAliases.some(alias => alias.length >= 4 && channelName.includes(alias));
-        const hasAway = awayAliases.some(alias => alias.length >= 4 && channelName.includes(alias));
+        if (!channelName.includes('vs')) continue; // Skip non-match channels
+
+        const hasHome = homeAliases.some(alias => alias.length >= 3 && channelName.includes(alias));
+        const hasAway = awayAliases.some(alias => alias.length >= 3 && channelName.includes(alias));
 
         if (hasHome && hasAway) {
             return channel;
         }
     }
 
-    // Second pass: per-team channels, ONLY from matching league category
+    // Second pass: per-team channels from ANY category that covers this league
+    const relevantLeagueIds = new Set();
+    // Map cup competitions to their league counterpart for channel matching
+    const cupToLeague = {
+        137: 135,  // Coppa Italia → Serie A
+        66: 61,    // Coupe de France → Ligue 1
+    };
+    const targetLeagueId = cupToLeague[leagueId] || leagueId;
+    relevantLeagueIds.add(targetLeagueId);
+
     for (const channel of channels) {
-        if (!channel.league_id || channel.league_id !== targetLeagueId) continue;
+        // Check if channel's category covers this league
+        const channelCoversLeague = channel.league_id === targetLeagueId ||
+            (channel.league_ids && channel.league_ids.includes(targetLeagueId));
+
+        if (!channelCoversLeague) continue;
 
         const channelName = channel.name.toLowerCase();
-        const hasHome = homeAliases.some(alias => alias.length >= 4 && channelName.includes(alias));
-        const hasAway = awayAliases.some(alias => alias.length >= 4 && channelName.includes(alias));
+        const hasHome = homeAliases.some(alias => alias.length >= 3 && channelName.includes(alias));
+        const hasAway = awayAliases.some(alias => alias.length >= 3 && channelName.includes(alias));
 
         if (hasHome || hasAway) {
             return channel;
@@ -641,7 +678,10 @@ const findPearlLaLigaStream = (fixture) => {
 const normalizeTeamName = (name) => {
     return name
         .toLowerCase()
-        .replace(/fc|cf|sc|ac|as|ss|us|rc|cd|ud|rcd|sd|ca|ce|real|racing|deportivo|atletico|atlético|sporting/gi, '')
+        // Only strip prefixes/suffixes that are common club designators (word boundary)
+        // Don't strip 'sporting' when it's the main name (e.g. Sporting CP)
+        .replace(/\b(fc|cf|sc|ac|as|ss|us|rc|cd|ud|rcd|sd|ca|ce)\b/gi, '')
+        .replace(/\b(racing|deportivo|atletico|atlético)\b/gi, '')
         .replace(/[^a-z0-9\s]/g, '')
         .replace(/\s+/g, ' ')
         .trim();
