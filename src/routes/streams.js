@@ -3,38 +3,27 @@ const router = express.Router();
 const streamController = require('../controllers/streamController');
 
 // ========================
-// SphereIPTV (existing - unchanged)
+// PearlIPTV (Bola/Football)
 // ========================
-
-// Start stream
-router.get('/start/:id', streamController.startStream);
-
-// Stop stream
-router.get('/stop/:id', streamController.stopStream);
-
-// Get all streams status
-router.get('/status', streamController.getStatus);
-
-// Get specific stream status
-router.get('/status/:id', streamController.getStreamStatus);
-
-// ========================
-// PearlIPTV (NEW)
-// ========================
-
-// Start Pearl stream
 router.get('/pearl/start/:id', streamController.startPearlStream);
-
-// Stop Pearl stream
 router.get('/pearl/stop/:id', streamController.stopPearlStream);
-
-// Get all Pearl streams status
+router.get('/pearl/stop-all', streamController.stopAllPearlStreams);
 router.get('/pearl/status', streamController.getPearlStatus);
-
-// Get specific Pearl stream status
 router.get('/pearl/status/:id', streamController.getPearlStreamStatus);
 
-// Stop ALL Pearl streams (for switching channels)
-router.get('/pearl/stop-all', streamController.stopAllPearlStreams);
+// ========================
+// SphereIPTV (Basketball, Tennis, Hockey, dll)
+// ========================
+router.get('/sphere/start/:id', streamController.startSphereStream);
+router.get('/sphere/stop/:id', streamController.stopSphereStream);
+router.get('/sphere/stop-all', streamController.stopAllSphereStreams);
+router.get('/sphere/status', streamController.getSphereStatus);
+router.get('/sphere/status/:id', streamController.getSphereStreamStatus);
+
+// ========================
+// Global (All Providers)
+// ========================
+router.get('/status', streamController.getStatus);
+router.get('/stop-all', streamController.stopAllStreams);
 
 module.exports = router;
