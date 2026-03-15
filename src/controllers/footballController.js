@@ -520,30 +520,34 @@ const findBestStream = (fixture, sphereChannels, pearlChannels) => {
     const leagueId = fixture.league.id;
     const preferredProvider = LEAGUE_PROVIDER[leagueId] || 'sphere';
 
+    const pearlStream = findPearlStream(fixture, pearlChannels);
+    const sphereStream = findSphereStream(fixture, sphereChannels);
+
     if (preferredProvider === 'pearl') {
-        // Try PearlIPTV first - but only "vs" format (match-specific)
-        const pearlStream = findPearlStream(fixture, pearlChannels);
         const isMatchSpecific = pearlStream && pearlStream.name && /\bvs\b/i.test(pearlStream.name);
 
-        if (isMatchSpecific) return pearlStream;
+        if (isMatchSpecific) {
+            return { primary: pearlStream, alt: sphereStream || null };
+        }
 
-        // Check Sphere for match-specific channel
-        const sphereStream = findSphereStream(fixture, sphereChannels);
-        if (sphereStream) return sphereStream;
+        if (sphereStream) {
+            return { primary: sphereStream, alt: pearlStream || null };
+        }
 
-        // Fallback to Pearl per-team channel if Sphere has nothing
-        if (pearlStream) return pearlStream;
+        if (pearlStream) {
+            return { primary: pearlStream, alt: null };
+        }
     } else {
-        // Try SphereIPTV first
-        const sphereStream = findSphereStream(fixture, sphereChannels);
-        if (sphereStream) return sphereStream;
+        if (sphereStream) {
+            return { primary: sphereStream, alt: pearlStream || null };
+        }
 
-        // Fallback to PearlIPTV
-        const pearlStream = findPearlStream(fixture, pearlChannels);
-        if (pearlStream) return pearlStream;
+        if (pearlStream) {
+            return { primary: pearlStream, alt: null };
+        }
     }
 
-    return null;
+    return { primary: null, alt: null };
 };
 
 // Find stream in SphereIPTV (existing logic - match by team names in channel name)
@@ -901,17 +905,24 @@ const getFootballMatch = async (req, res) => {
             fetchPearlIPTVChannels()
         ]);
 
-        const stream = findBestStream(match, sphereChannels, pearlChannels);
+        const result = findBestStream(match, sphereChannels, pearlChannels) || { primary: null, alt: null };
+        const { primary, alt } = result;
 
         res.json({
             success: true,
             match: {
                 ...match,
-                stream: stream ? {
-                    id: stream.id,
-                    name: stream.name,
-                    category: stream.category,
-                    provider: stream.provider
+                stream: primary ? {
+                    id: primary.id,
+                    name: primary.name,
+                    category: primary.category,
+                    provider: primary.provider
+                } : null,
+                altStream: alt ? {
+                    id: alt.id,
+                    name: alt.name,
+                    category: alt.category,
+                    provider: alt.provider
                 } : null
             }
         });
