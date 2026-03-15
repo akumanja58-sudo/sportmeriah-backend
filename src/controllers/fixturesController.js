@@ -1276,7 +1276,8 @@ exports.getFixtureById = async (req, res) => {
                     away: fixture.goals.away
                 },
                 score: fixture.score,
-                stream: matchedStream
+                stream: matchedStream,
+                altStream: altStream
             }
         });
 
