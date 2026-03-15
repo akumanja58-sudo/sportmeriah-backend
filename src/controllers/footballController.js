@@ -519,13 +519,18 @@ const findBestStream = (fixture, sphereChannels, pearlChannels) => {
     const preferredProvider = LEAGUE_PROVIDER[leagueId] || 'sphere';
 
     if (preferredProvider === 'pearl') {
-        // Try PearlIPTV first
+        // Try PearlIPTV first - but only "vs" format (match-specific)
         const pearlStream = findPearlStream(fixture, pearlChannels);
-        if (pearlStream) return pearlStream;
+        const isMatchSpecific = pearlStream && pearlStream.name && /\bvs\b/i.test(pearlStream.name);
 
-        // Fallback to SphereIPTV
+        if (isMatchSpecific) return pearlStream;
+
+        // Check Sphere for match-specific channel
         const sphereStream = findSphereStream(fixture, sphereChannels);
         if (sphereStream) return sphereStream;
+
+        // Fallback to Pearl per-team channel if Sphere has nothing
+        if (pearlStream) return pearlStream;
     } else {
         // Try SphereIPTV first
         const sphereStream = findSphereStream(fixture, sphereChannels);
