@@ -20,6 +20,9 @@ const VPS_IP = process.env.VPS_IP || '173.249.27.15';
 
 // IPTV Categories for Football
 const IPTV_FOOTBALL_CATEGORIES = [
+    // USA Soccer (Sphere - covers all leagues)
+    '171',   // SPORTS - SOCCER (USA Soccer01-50)
+
     // UEFA Competitions
     '1497',  // US| UEFA PPV (Europa League, Conference League, Champions League)
     '921',   // UK| UEFA PPV
