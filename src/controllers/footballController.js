@@ -492,25 +492,23 @@ const fetchSportsTVChannels = async () => {
     }
 };
 
+// ========================
+// MATCHING LOGIC
+// ========================
+
+// Match fixtures with streams from BOTH providers
 const matchFixturesWithStreams = (fixtures, sphereChannels, pearlChannels) => {
     return fixtures.map(fixture => {
-        const result = findBestStream(fixture, sphereChannels, pearlChannels) || { primary: null, alt: null };
-        const { primary, alt } = result;
+        const stream = findBestStream(fixture, sphereChannels, pearlChannels);
         return {
             ...fixture,
-            stream: primary ? {
-                id: primary.id,
-                name: primary.name,
-                category: primary.category,
-                provider: primary.provider
+            stream: stream ? {
+                id: stream.id,
+                name: stream.name,
+                category: stream.category,
+                provider: stream.provider // 'sphere' or 'pearl'
             } : null,
-            altStream: alt ? {
-                id: alt.id,
-                name: alt.name,
-                category: alt.category,
-                provider: alt.provider
-            } : null,
-            hasStream: !!primary
+            hasStream: !!stream
         };
     });
 };
@@ -520,34 +518,25 @@ const findBestStream = (fixture, sphereChannels, pearlChannels) => {
     const leagueId = fixture.league.id;
     const preferredProvider = LEAGUE_PROVIDER[leagueId] || 'sphere';
 
-    const pearlStream = findPearlStream(fixture, pearlChannels);
-    const sphereStream = findSphereStream(fixture, sphereChannels);
-
     if (preferredProvider === 'pearl') {
-        const isMatchSpecific = pearlStream && pearlStream.name && /\bvs\b/i.test(pearlStream.name);
+        // Try PearlIPTV first
+        const pearlStream = findPearlStream(fixture, pearlChannels);
+        if (pearlStream) return pearlStream;
 
-        if (isMatchSpecific) {
-            return { primary: pearlStream, alt: sphereStream || null };
-        }
-
-        if (sphereStream) {
-            return { primary: sphereStream, alt: pearlStream || null };
-        }
-
-        if (pearlStream) {
-            return { primary: pearlStream, alt: null };
-        }
+        // Fallback to SphereIPTV
+        const sphereStream = findSphereStream(fixture, sphereChannels);
+        if (sphereStream) return sphereStream;
     } else {
-        if (sphereStream) {
-            return { primary: sphereStream, alt: pearlStream || null };
-        }
+        // Try SphereIPTV first
+        const sphereStream = findSphereStream(fixture, sphereChannels);
+        if (sphereStream) return sphereStream;
 
-        if (pearlStream) {
-            return { primary: pearlStream, alt: null };
-        }
+        // Fallback to PearlIPTV
+        const pearlStream = findPearlStream(fixture, pearlChannels);
+        if (pearlStream) return pearlStream;
     }
 
-    return { primary: null, alt: null };
+    return null;
 };
 
 // Find stream in SphereIPTV (existing logic - match by team names in channel name)
@@ -905,24 +894,17 @@ const getFootballMatch = async (req, res) => {
             fetchPearlIPTVChannels()
         ]);
 
-        const result = findBestStream(match, sphereChannels, pearlChannels) || { primary: null, alt: null };
-        const { primary, alt } = result;
+        const stream = findBestStream(match, sphereChannels, pearlChannels);
 
         res.json({
             success: true,
             match: {
                 ...match,
-                stream: primary ? {
-                    id: primary.id,
-                    name: primary.name,
-                    category: primary.category,
-                    provider: primary.provider
-                } : null,
-                altStream: alt ? {
-                    id: alt.id,
-                    name: alt.name,
-                    category: alt.category,
-                    provider: alt.provider
+                stream: stream ? {
+                    id: stream.id,
+                    name: stream.name,
+                    category: stream.category,
+                    provider: stream.provider
                 } : null
             }
         });
