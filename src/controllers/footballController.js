@@ -492,23 +492,24 @@ const fetchSportsTVChannels = async () => {
     }
 };
 
-// ========================
-// MATCHING LOGIC
-// ========================
-
-// Match fixtures with streams from BOTH providers
 const matchFixturesWithStreams = (fixtures, sphereChannels, pearlChannels) => {
     return fixtures.map(fixture => {
-        const stream = findBestStream(fixture, sphereChannels, pearlChannels);
+        const { primary, alt } = findBestStream(fixture, sphereChannels, pearlChannels);
         return {
             ...fixture,
-            stream: stream ? {
-                id: stream.id,
-                name: stream.name,
-                category: stream.category,
-                provider: stream.provider // 'sphere' or 'pearl'
+            stream: primary ? {
+                id: primary.id,
+                name: primary.name,
+                category: primary.category,
+                provider: primary.provider
             } : null,
-            hasStream: !!stream
+            altStream: alt ? {
+                id: alt.id,
+                name: alt.name,
+                category: alt.category,
+                provider: alt.provider
+            } : null,
+            hasStream: !!primary
         };
     });
 };
