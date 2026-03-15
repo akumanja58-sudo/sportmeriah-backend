@@ -623,13 +623,6 @@ function parseTeamsFromChannel(channelName) {
     let homeTeam = '';
     let awayTeam = '';
 
-    // Pattern 0: "USA Soccer01: League : TeamA vs TeamB @ time"
-    const usaSoccerMatch = name.match(/usa\s+soccer\d*:\s*(?:.*?:\s*)?(.+?)\s+vs\s+(.+?)\s*(?:@|$)/i);
-    if (usaSoccerMatch) {
-        homeTeam = usaSoccerMatch[1].trim();
-        awayTeam = usaSoccerMatch[2].trim();
-    }
-
     // Pattern 1: "UEFA | XX - TeamA vs TeamB TIME"
     const uefaMatch = name.match(/(?:uefa|uel|ucl|uecl)\s*\|?\s*\d*\s*-?\s*(.+?)\s+vs\s+(.+?)\s+\d/i);
     if (uefaMatch) {
