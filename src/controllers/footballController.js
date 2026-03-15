@@ -494,7 +494,8 @@ const fetchSportsTVChannels = async () => {
 
 const matchFixturesWithStreams = (fixtures, sphereChannels, pearlChannels) => {
     return fixtures.map(fixture => {
-        const { primary, alt } = findBestStream(fixture, sphereChannels, pearlChannels);
+        const result = findBestStream(fixture, sphereChannels, pearlChannels) || { primary: null, alt: null };
+        const { primary, alt } = result;
         return {
             ...fixture,
             stream: primary ? {
