@@ -628,11 +628,24 @@ function parseTeamsFromChannel(channelName) {
     }
 
     // Pattern 2: "... : TeamA vs TeamB @ ..."
+    // Pattern 2: "... : TeamA vs TeamB @ ..."
+    // Use LAST colon before "vs" to handle formats like:
+    // "USA Soccer01: England - Premier League : Crystal Palace vs Leeds United @ 10:00am EDT"
     if (!homeTeam) {
-        const colonMatch = name.match(/:\s*(.+?)\s+vs\s+(.+?)\s*(?:@|\/\/|\d)/i);
-        if (colonMatch) {
-            homeTeam = colonMatch[1].trim();
-            awayTeam = colonMatch[2].trim();
+        const vsIndex = name.indexOf(' vs ');
+        if (vsIndex !== -1) {
+            const beforeVs = name.substring(0, vsIndex);
+            const lastColonIndex = beforeVs.lastIndexOf(':');
+            if (lastColonIndex !== -1) {
+                homeTeam = beforeVs.substring(lastColonIndex + 1).trim();
+                const afterVs = name.substring(vsIndex + 4);
+                const awayMatch = afterVs.match(/^(.+?)\s*(?:@|\/\/|\d{1,2}:\d{2})/i);
+                if (awayMatch) {
+                    awayTeam = awayMatch[1].trim();
+                } else {
+                    awayTeam = afterVs.trim();
+                }
+            }
         }
     }
 
