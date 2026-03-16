@@ -669,15 +669,34 @@ function parseTeamsFromChannel(channelName) {
 }
 
 // ========== CHECK IF TEAMS MATCH ==========
+const TEAM_CONFLICTS = [
+    ['manchester city', 'manchester united'],
+    ['sheffield united', 'sheffield wednesday'],
+    ['inter milan', 'ac milan'],
+    ['atletico madrid', 'real madrid'],
+    ['real sociedad', 'real madrid'],
+    ['real betis', 'real madrid'],
+    ['real betis', 'real sociedad'],
+];
+
 function teamsMatch(iptvTeam, apiTeam) {
+    const iptvNorm = normalizeTeamName(iptvTeam);
+    const apiNorm = normalizeTeamName(apiTeam);
+
+    // Block known conflicts first
+    for (const [a, b] of TEAM_CONFLICTS) {
+        if ((iptvNorm.includes(a) && apiNorm.includes(b)) ||
+            (iptvNorm.includes(b) && apiNorm.includes(a))) {
+            return false;
+        }
+    }
+
     const iptvVariations = getTeamVariations(iptvTeam);
     const apiVariations = getTeamVariations(apiTeam);
 
-    // Check exact match
     for (const iv of iptvVariations) {
         for (const av of apiVariations) {
             if (iv === av) return true;
-            // Check if one contains the other (min 5 chars)
             if (iv.length >= 5 && av.length >= 5) {
                 if (iv.includes(av) || av.includes(iv)) return true;
             }
