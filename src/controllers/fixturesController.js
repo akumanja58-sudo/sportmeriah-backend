@@ -59,6 +59,7 @@ const IPTV_FOOTBALL_CATEGORIES = [
     '1882',  // US| FIFA+ PPV
     '976',   // UK| LA LIGA TEAM PPV
     '975',   // UK| HUB PREMIER PPV
+    '171',   // SPORTS - SOCCER (Sphere Cat 171 - USA Soccer channels)
 ];
 
 // ========== TEAM NAME ALIASES ==========
