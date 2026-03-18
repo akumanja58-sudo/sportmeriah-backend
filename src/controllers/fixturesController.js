@@ -622,7 +622,7 @@ function parseTeamsFromChannel(channelName) {
     let awayTeam = '';
 
     // Pattern 1: "UEFA | XX - TeamA vs TeamB TIME"
-    const uefaMatch = name.match(/(?:uefa|uel|ucl|uecl)\s*\|?\s*\d*\s*-?\s*(.+?)\s+vs\s+(.+?)\s+\d/i);
+    const uefaMatch = name.match(/(?:uefa|uel|ucl|uecl)\s*\|?\s*\d*\s*-?\s*(.+?)\s+vs\.?\s+(.+?)\s+\d/i);
     if (uefaMatch) {
         homeTeam = uefaMatch[1].trim();
         awayTeam = uefaMatch[2].trim();
@@ -633,13 +633,15 @@ function parseTeamsFromChannel(channelName) {
     // Use LAST colon before "vs" to handle formats like:
     // "USA Soccer01: England - Premier League : Crystal Palace vs Leeds United @ 10:00am EDT"
     if (!homeTeam) {
-        const vsIndex = name.indexOf(' vs ');
+        let vsIndex = name.indexOf(' vs ');
+        if (vsIndex === -1) vsIndex = name.indexOf(' vs. ');
         if (vsIndex !== -1) {
             const beforeVs = name.substring(0, vsIndex);
             const lastColonIndex = beforeVs.lastIndexOf(':');
             if (lastColonIndex !== -1) {
                 homeTeam = beforeVs.substring(lastColonIndex + 1).trim();
-                const afterVs = name.substring(vsIndex + 4);
+                const vsLength = name.substring(vsIndex).match(/\s+vs\.?\s+/i)[0].length;
+                const afterVs = name.substring(vsIndex + vsLength);
                 const awayMatch = afterVs.match(/^(.+?)\s*(?:@|\/\/|\d{1,2}:\d{2})/i);
                 if (awayMatch) {
                     awayTeam = awayMatch[1].trim();
@@ -650,9 +652,18 @@ function parseTeamsFromChannel(channelName) {
         }
     }
 
+    // Pattern 2b: "... | TeamA vs. TeamB | ..." (pipe separated - Pearl UCL format)
+    if (!homeTeam) {
+        const pipeVsMatch = name.match(/\|\s*(.+?)\s+vs\.?\s+(.+?)\s*\|/i);
+        if (pipeVsMatch) {
+            homeTeam = pipeVsMatch[1].trim();
+            awayTeam = pipeVsMatch[2].trim();
+        }
+    }
+
     // Pattern 3: "TeamA vs TeamB" (simple)
     if (!homeTeam) {
-        const simpleMatch = name.match(/(.+?)\s+vs\s+(.+?)(?:\s+\d|$)/i);
+        const simpleMatch = name.match(/(.+?)\s+vs\.?\s+(.+?)(?:\s+\d|$)/i);
         if (simpleMatch) {
             homeTeam = simpleMatch[1].replace(/^.*[-|]\s*/, '').trim();
             awayTeam = simpleMatch[2].trim();
