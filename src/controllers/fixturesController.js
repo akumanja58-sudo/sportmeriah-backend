@@ -13,8 +13,8 @@ const IPTV_PASSWORD = process.env.IPTV_PASS;
 
 // IPTV config - PearlIPTV (fallback provider)
 const PEARL_SERVER = process.env.PEARL_SERVER || 'pearlhost2.one';
-const PEARL_USER = process.env.PEARL_USER || 'pearliptv629';
-const PEARL_PASS = process.env.PEARL_PASS || '6sa363brvr';
+const PEARL_USER = process.env.PEARL_USER || 'pearliptv669';
+const PEARL_PASS = process.env.PEARL_PASS || 'gwb66he3zc';
 const PEARL_PORT = process.env.PEARL_PORT || '80';
 
 // VPS Config
