@@ -6,6 +6,8 @@ const API_FOOTBALL_URL = 'https://v3.football.api-sports.io';
 
 // IPTV config - SphereIPTV
 const IPTV_BASE_URL = process.env.IPTV_SERVER;
+const IPTV_PORT = process.env.IPTV_PORT || '8080';
+const IPTV_PROTOCOL = process.env.IPTV_PROTOCOL || 'http';
 const IPTV_USERNAME = process.env.IPTV_USER;
 const IPTV_PASSWORD = process.env.IPTV_PASS;
 
@@ -394,7 +396,7 @@ async function fetchIPTVChannels() {
 
     try {
         const fetchPromises = IPTV_FOOTBALL_CATEGORIES.map(categoryId => {
-            const url = `${IPTV_BASE_URL}/player_api.php?username=${IPTV_USERNAME}&password=${IPTV_PASSWORD}&action=get_live_streams&category_id=${categoryId}`;
+            const url = `${IPTV_PROTOCOL}://${IPTV_BASE_URL}:${IPTV_PORT}/player_api.php?username=${IPTV_USERNAME}&password=${IPTV_PASSWORD}&action=get_live_streams&category_id=${categoryId}`;
             return axios.get(url, { timeout: 10000 }).catch(err => {
                 console.error(`Failed to fetch category ${categoryId}:`, err.message);
                 return { data: [] };
