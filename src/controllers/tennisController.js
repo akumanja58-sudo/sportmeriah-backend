@@ -1,309 +1,312 @@
 const axios = require('axios');
 
-// Tennis API configuration
-const TENNIS_API_KEY = process.env.TENNIS_API_KEY;
-const TENNIS_API_URL = 'https://api.api-tennis.com/tennis';
+// ========================
+// IPTV PROVIDER CONFIG
+// ========================
 
-// IPTV configuration
-const IPTV_SERVER = process.env.IPTV_SERVER;
-const IPTV_USER = process.env.IPTV_USER;
-const IPTV_PASS = process.env.IPTV_PASS;
+const SPHERE_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
+const SPHERE_PORT = process.env.IPTV_PORT || '8080';
+const SPHERE_USER = process.env.IPTV_USER || '5986529';
+const SPHERE_PASS = process.env.IPTV_PASS || '0044003';
+const SPHERE_PROTOCOL = process.env.IPTV_PROTOCOL || 'http';
 
-// General Tennis channels (from TENNIS LIVE category 1096)
-const TENNIS_CHANNELS = [
-    { name: 'SKY SPORT TENNIS 4K', stream_id: 686564, quality: '4K' },
-    { name: 'US TENNIS HD', stream_id: 686562, quality: 'HD' },
-    { name: 'NL ZIGGO SPORT TENNIS 4K', stream_id: 686566, quality: '4K' },
-    { name: 'IT SKY SPORT TENNIS 4K', stream_id: 686543, quality: '4K' },
-    { name: 'IT SKY SPORT TENNIS HD', stream_id: 686541, quality: 'HD' },
-    { name: 'DE SKY SPORT TENNIS HD', stream_id: 686546, quality: 'HD' },
+// VPS Config (HLS proxy)
+const VPS_STREAM_BASE = process.env.VPS_STREAM_URL || 'https://stream.nobarmeriah.com';
+
+// ========================
+// CATEGORY CONFIGS
+// ========================
+
+// Sphere Tennis Category
+const SPHERE_TENNIS_CATEGORIES = [
+    { id: '230', name: 'SPORTS - TENNIS', priority: 1 },
 ];
 
-// Default channel for live matches
-const DEFAULT_TENNIS_CHANNEL = TENNIS_CHANNELS[0]; // SKY SPORT TENNIS 4K
+// Sports TV Category (Category 122)
+const SPORTS_TV_CATEGORY = '122';
 
-// Get tennis matches
-const getTennisMatches = async (req, res) => {
+// Sports TV channels relevant for Tennis
+const TENNIS_TV_CHANNELS = [
+    { stream_id: 3685, name: 'Tennis Channel UHD', league: 'ATP/WTA' },
+    { stream_id: 2386, name: 'Tennis Channel', league: 'ATP/WTA' },
+    { stream_id: 3762, name: 'Tennis Channel (SHD)', league: 'ATP/WTA' },
+    // ESPN also covers Grand Slams
+    { stream_id: 3636, name: 'ESPN UHD', league: 'Grand Slam' },
+    { stream_id: 3637, name: 'ESPN 2 UHD', league: 'Grand Slam' },
+    { stream_id: 3725, name: 'ESPN (SHD)', league: 'Grand Slam' },
+    { stream_id: 2581, name: 'ESPN 2 (SHD)', league: 'Grand Slam' },
+];
+
+// ========================
+// CACHE
+// ========================
+let channelCache = { data: null, lastFetch: null, ttl: 5 * 60 * 1000 };
+
+// ========================
+// MAIN ENDPOINT
+// ========================
+
+const getTennisEvents = async (req, res) => {
     try {
-        // Get today's date and tomorrow in required format
-        const today = new Date();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
+        const [sphereChannels, sportsTVChannels] = await Promise.all([
+            fetchSphereChannels(),
+            fetchSportsTVChannels()
+        ]);
 
-        const formatDate = (date) => {
-            return date.toISOString().split('T')[0];
-        };
-
-        // Fetch live matches
-        const liveResponse = await axios.get(TENNIS_API_URL, {
-            params: {
-                method: 'get_livescore',
-                APIkey: TENNIS_API_KEY
-            }
+        // Filter active channels (non-empty names)
+        const activeChannels = sphereChannels.filter(ch => {
+            const cleanName = ch.name.replace(/^TENNIS\s*\d*\s*:\s*/i, '').trim();
+            return cleanName.length > 0;
         });
 
-        // Fetch today's fixtures
-        const fixturesResponse = await axios.get(TENNIS_API_URL, {
-            params: {
-                method: 'get_fixtures',
-                APIkey: TENNIS_API_KEY,
-                date_start: formatDate(today),
-                date_stop: formatDate(tomorrow)
-            }
+        const emptyChannels = sphereChannels.filter(ch => {
+            const cleanName = ch.name.replace(/^TENNIS\s*\d*\s*:\s*/i, '').trim();
+            return cleanName.length === 0;
         });
 
-        // Process live matches
-        const liveMatches = processMatches(liveResponse.data?.result || [], true);
-
-        // Process fixtures
-        const fixtures = processMatches(fixturesResponse.data?.result || [], false);
-
-        // Combine and deduplicate (live matches take priority)
-        const liveIds = new Set(liveMatches.map(m => m.id));
-        const allMatches = [
-            ...liveMatches,
-            ...fixtures.filter(m => !liveIds.has(m.id))
-        ];
-
-        // Sort by date/time
-        allMatches.sort((a, b) => {
-            const dateA = new Date(`${a.date}T${a.time}`);
-            const dateB = new Date(`${b.date}T${b.time}`);
-            return dateA - dateB;
+        // Categorize by tournament type
+        const atpChannels = activeChannels.filter(ch => {
+            const name = ch.name.toLowerCase();
+            return name.includes('atp') || name.includes('masters');
         });
 
-        // Assign streams to live matches
-        const matchesWithStreams = assignStreamsToMatches(allMatches);
+        const wtaChannels = activeChannels.filter(ch => {
+            const name = ch.name.toLowerCase();
+            return name.includes('wta');
+        });
 
-        // Count stats
-        const liveCount = matchesWithStreams.filter(m => isLiveStatus(m)).length;
-        const withStreams = matchesWithStreams.filter(m => m.hasStream).length;
+        const grandSlamChannels = activeChannels.filter(ch => {
+            const name = ch.name.toLowerCase();
+            return name.includes('australian open') || name.includes('roland garros') ||
+                name.includes('french open') || name.includes('wimbledon') ||
+                name.includes('us open');
+        });
 
         res.json({
             success: true,
-            date: 'today+tomorrow',
-            total: matchesWithStreams.length,
-            withStreams,
-            liveCount,
-            availableChannels: TENNIS_CHANNELS,
-            matches: matchesWithStreams
+            sport: 'tennis',
+            timestamp: new Date().toISOString(),
+            stats: {
+                totalSlots: sphereChannels.length,
+                activeChannels: activeChannels.length,
+                emptySlots: emptyChannels.length,
+                atpChannels: atpChannels.length,
+                wtaChannels: wtaChannels.length,
+                grandSlamChannels: grandSlamChannels.length,
+                sportsTVChannels: sportsTVChannels.length
+            },
+            channels: {
+                atp: atpChannels,
+                wta: wtaChannels,
+                grandSlam: grandSlamChannels,
+                all: activeChannels
+            },
+            sportsTVChannels: sportsTVChannels,
+            upcomingTournaments: getUpcomingTournaments()
         });
-
     } catch (error) {
-        console.error('Tennis API Error:', error.message);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch tennis matches',
-            message: error.message
-        });
+        console.error('Tennis Events Error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 };
 
-// Process raw match data from API
-const processMatches = (matches, isLive) => {
-    if (!Array.isArray(matches)) return [];
+// ========================
+// FETCH FUNCTIONS
+// ========================
 
-    return matches.map(match => {
-        // Parse scores
-        const scores = parseScores(match);
+const fetchSphereChannels = async () => {
+    const now = Date.now();
+    if (channelCache.data && channelCache.lastFetch && (now - channelCache.lastFetch < channelCache.ttl)) {
+        return channelCache.data;
+    }
 
-        // Determine status
-        const status = {
-            short: match.event_status || (isLive ? 'LIVE' : 'NS'),
-            long: match.event_status || (isLive ? 'Live' : 'Not Started'),
-            live: isLive || match.event_live === '1'
-        };
+    const allChannels = [];
 
-        return {
-            id: parseInt(match.event_key) || match.event_key,
-            date: match.event_date || '',
-            time: match.event_time || '',
-            status,
-            tournament: {
-                id: match.tournament_key,
-                name: match.tournament_name || '',
-                type: match.tournament_type || '',
-                round: match.event_type_type || match.round_name || '',
-                season: match.tournament_season || ''
-            },
-            player1: {
-                id: match.home_player_key || match.first_player_key,
-                name: match.event_first_player || '',
-                logo: match.event_first_player_logo || null
-            },
-            player2: {
-                id: match.away_player_key || match.second_player_key,
-                name: match.event_second_player || '',
-                logo: match.event_second_player_logo || null
-            },
-            result: match.event_final_result || '-',
-            gameResult: match.event_game_result || '-',
-            serve: match.event_serve || null,
-            winner: match.event_winner || null,
-            scores,
-            stream: null,
-            hasStream: false
-        };
-    });
-};
-
-// Parse score data
-const parseScores = (match) => {
-    const scores = [];
-
-    // Try to parse from event_first_player_set fields
-    for (let i = 1; i <= 5; i++) {
-        const p1Set = match[`event_first_player_set${i}`];
-        const p2Set = match[`event_second_player_set${i}`];
-
-        if (p1Set !== undefined && p1Set !== '' && p2Set !== undefined && p2Set !== '') {
-            scores.push({
-                set: String(i),
-                player1: String(p1Set),
-                player2: String(p2Set)
+    for (const category of SPHERE_TENNIS_CATEGORIES) {
+        try {
+            const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}:${SPHERE_PORT}/player_api.php`, {
+                params: {
+                    username: SPHERE_USER,
+                    password: SPHERE_PASS,
+                    action: 'get_live_streams',
+                    category_id: category.id
+                },
+                timeout: 10000
             });
+
+            if (response.data && Array.isArray(response.data)) {
+                const channels = response.data.map(ch => ({
+                    id: ch.stream_id,
+                    name: ch.name || '',
+                    category: category.name,
+                    league: detectTournament(ch.name),
+                    icon: ch.stream_icon || null,
+                    provider: 'sphere',
+                    priority: category.priority
+                }));
+                allChannels.push(...channels);
+            }
+        } catch (err) {
+            console.error('Error fetching Sphere tennis:', err.message);
         }
     }
 
-    return scores;
+    // Remove duplicates
+    const seen = new Set();
+    const unique = allChannels.filter(ch => {
+        if (seen.has(ch.id)) return false;
+        seen.add(ch.id);
+        return true;
+    });
+
+    channelCache.data = unique;
+    channelCache.lastFetch = now;
+
+    return unique;
 };
 
-// Check if match is currently live
-const isLiveStatus = (match) => {
-    if (!match || !match.status) return false;
+const fetchSportsTVChannels = async () => {
+    try {
+        const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}:${SPHERE_PORT}/player_api.php`, {
+            params: {
+                username: SPHERE_USER,
+                password: SPHERE_PASS,
+                action: 'get_live_streams',
+                category_id: SPORTS_TV_CATEGORY
+            },
+            timeout: 10000
+        });
 
-    const status = match.status;
+        if (response.data && Array.isArray(response.data)) {
+            const tennisStreamIds = new Set(TENNIS_TV_CHANNELS.map(ch => ch.stream_id));
 
-    // Check live flag
-    if (status.live === true || status.live === '1') return true;
+            const channels = response.data
+                .filter(ch => tennisStreamIds.has(ch.stream_id))
+                .map(ch => {
+                    const predefined = TENNIS_TV_CHANNELS.find(p => p.stream_id === ch.stream_id);
+                    return {
+                        id: ch.stream_id,
+                        name: predefined?.name || ch.name,
+                        originalName: ch.name,
+                        icon: ch.stream_icon || null,
+                        league: predefined?.league || 'Tennis',
+                        category: 'Sports TV',
+                        type: 'tv_channel',
+                        provider: 'sphere'
+                    };
+                });
 
-    // Check status text
-    const statusText = (status.short || status.long || '').toUpperCase();
-    const liveKeywords = ['SET 1', 'SET 2', 'SET 3', 'SET 4', 'SET 5', 'LIVE', 'IN PROGRESS', 'PLAYING'];
+            const orderMap = new Map(TENNIS_TV_CHANNELS.map((ch, idx) => [ch.stream_id, idx]));
+            channels.sort((a, b) => (orderMap.get(a.id) || 999) - (orderMap.get(b.id) || 999));
 
-    return liveKeywords.some(keyword => statusText.includes(keyword));
+            return channels;
+        }
+
+        return [];
+    } catch (err) {
+        console.error('Error fetching Sports TV:', err.message);
+        return [];
+    }
 };
 
-// Check if match is finished
-const isFinishedStatus = (match) => {
-    if (!match || !match.status) return false;
+// ========================
+// STREAM INFO ENDPOINT
+// ========================
 
-    const statusText = (match.status.short || match.status.long || '').toUpperCase();
-    const finishedKeywords = ['FINISHED', 'ENDED', 'RETIRED', 'WALKOVER', 'CANCELLED', 'POSTPONED', 'AWARDED'];
+const getStreamInfo = async (req, res) => {
+    try {
+        const { streamId } = req.params;
 
-    return finishedKeywords.some(keyword => statusText.includes(keyword));
-};
+        const streamUrl = `${VPS_STREAM_BASE}/hls/sphere_${streamId}.m3u8`;
 
-// Assign streams to live matches
-const assignStreamsToMatches = (matches) => {
-    let streamIndex = 0;
+        const channels = await fetchSphereChannels();
+        const sportsTVChannels = await fetchSportsTVChannels();
+        const allChannels = [...channels, ...sportsTVChannels];
 
-    return matches.map(match => {
-        // Only assign streams to LIVE matches
-        if (isLiveStatus(match) && !isFinishedStatus(match)) {
-            // Rotate through available channels
-            const channel = TENNIS_CHANNELS[streamIndex % TENNIS_CHANNELS.length];
-            streamIndex++;
+        let channel = allChannels.find(ch => ch.id === parseInt(streamId));
 
-            return {
-                ...match,
-                stream: {
-                    id: channel.stream_id,
-                    name: channel.name,
-                    quality: channel.quality,
-                    allChannels: TENNIS_CHANNELS // Include all channels so user can switch
-                },
-                hasStream: true
+        if (!channel) {
+            channel = {
+                id: parseInt(streamId),
+                name: `Tennis Stream ${streamId}`,
+                category: 'Tennis',
+                icon: null,
+                provider: 'sphere'
             };
         }
 
-        return match;
-    });
-};
-
-// Get single match by ID
-const getTennisMatch = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // Fetch from main endpoint
-        const response = await getTennisMatchesInternal();
-        const match = response.matches.find(m => String(m.id) === String(id));
-
-        if (!match) {
-            return res.status(404).json({
-                success: false,
-                error: 'Match not found'
-            });
-        }
-
         res.json({
             success: true,
-            match,
-            availableChannels: TENNIS_CHANNELS
+            stream: {
+                id: channel.id,
+                name: channel.name,
+                url: streamUrl,
+                category: channel.category,
+                icon: channel.icon,
+                league: channel.league || 'Tennis',
+                type: channel.type || 'event',
+                provider: 'sphere'
+            }
         });
-
     } catch (error) {
-        console.error('Tennis Match Error:', error.message);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to fetch tennis match',
-            message: error.message
-        });
+        console.error('Stream Info Error:', error.message);
+        res.status(500).json({ success: false, error: error.message });
     }
 };
 
-// Internal function to get matches (for reuse)
-const getTennisMatchesInternal = async () => {
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+// ========================
+// HELPER FUNCTIONS
+// ========================
 
-    const formatDate = (date) => date.toISOString().split('T')[0];
+const detectTournament = (name) => {
+    if (!name) return 'Tennis';
+    const lower = name.toLowerCase();
+    if (lower.includes('australian open')) return 'Australian Open';
+    if (lower.includes('roland garros') || lower.includes('french open')) return 'Roland Garros';
+    if (lower.includes('wimbledon')) return 'Wimbledon';
+    if (lower.includes('us open')) return 'US Open';
+    if (lower.includes('atp finals')) return 'ATP Finals';
+    if (lower.includes('atp')) return 'ATP';
+    if (lower.includes('wta')) return 'WTA';
+    if (lower.includes('masters')) return 'ATP Masters';
+    if (lower.includes('davis cup')) return 'Davis Cup';
+    if (lower.includes('fed cup') || lower.includes('billie jean')) return 'Billie Jean King Cup';
+    return 'Tennis';
+};
 
-    // Fetch live matches
-    const liveResponse = await axios.get(TENNIS_API_URL, {
-        params: {
-            method: 'get_livescore',
-            APIkey: TENNIS_API_KEY
-        }
-    });
+const getUpcomingTournaments = () => {
+    const now = new Date();
+    const year = now.getFullYear();
 
-    // Fetch fixtures
-    const fixturesResponse = await axios.get(TENNIS_API_URL, {
-        params: {
-            method: 'get_fixtures',
-            APIkey: TENNIS_API_KEY,
-            date_start: formatDate(today),
-            date_stop: formatDate(tomorrow)
-        }
-    });
-
-    const liveMatches = processMatches(liveResponse.data?.result || [], true);
-    const fixtures = processMatches(fixturesResponse.data?.result || [], false);
-
-    const liveIds = new Set(liveMatches.map(m => m.id));
-    const allMatches = [
-        ...liveMatches,
-        ...fixtures.filter(m => !liveIds.has(m.id))
+    const tournaments = [
+        { name: 'Australian Open', location: 'Melbourne, Australia', date: `${year}-01-13`, type: 'Grand Slam', surface: 'Hard' },
+        { name: 'Indian Wells Masters', location: 'Indian Wells, USA', date: `${year}-03-06`, type: 'ATP Masters 1000', surface: 'Hard' },
+        { name: 'Miami Open', location: 'Miami, USA', date: `${year}-03-19`, type: 'ATP Masters 1000', surface: 'Hard' },
+        { name: 'Monte-Carlo Masters', location: 'Monte Carlo, Monaco', date: `${year}-04-07`, type: 'ATP Masters 1000', surface: 'Clay' },
+        { name: 'Madrid Open', location: 'Madrid, Spain', date: `${year}-04-27`, type: 'ATP Masters 1000', surface: 'Clay' },
+        { name: 'Italian Open', location: 'Rome, Italy', date: `${year}-05-11`, type: 'ATP Masters 1000', surface: 'Clay' },
+        { name: 'Roland Garros', location: 'Paris, France', date: `${year}-05-25`, type: 'Grand Slam', surface: 'Clay' },
+        { name: 'Wimbledon', location: 'London, England', date: `${year}-06-30`, type: 'Grand Slam', surface: 'Grass' },
+        { name: 'Canadian Open', location: 'Montreal/Toronto, Canada', date: `${year}-08-04`, type: 'ATP Masters 1000', surface: 'Hard' },
+        { name: 'Cincinnati Masters', location: 'Cincinnati, USA', date: `${year}-08-11`, type: 'ATP Masters 1000', surface: 'Hard' },
+        { name: 'US Open', location: 'New York, USA', date: `${year}-08-25`, type: 'Grand Slam', surface: 'Hard' },
+        { name: 'Shanghai Masters', location: 'Shanghai, China', date: `${year}-10-06`, type: 'ATP Masters 1000', surface: 'Hard' },
+        { name: 'Paris Masters', location: 'Paris, France', date: `${year}-10-27`, type: 'ATP Masters 1000', surface: 'Hard (Indoor)' },
+        { name: 'ATP Finals', location: 'Turin, Italy', date: `${year}-11-09`, type: 'ATP Finals', surface: 'Hard (Indoor)' },
     ];
 
-    allMatches.sort((a, b) => {
-        const dateA = new Date(`${a.date}T${a.time}`);
-        const dateB = new Date(`${b.date}T${b.time}`);
-        return dateA - dateB;
+    return tournaments.map(t => {
+        const tournamentDate = new Date(t.date);
+        let status = 'UPCOMING';
+        if (tournamentDate < now) status = 'FINISHED';
+        const diffDays = Math.ceil((tournamentDate - now) / (1000 * 60 * 60 * 24));
+        if (diffDays >= 0 && diffDays <= 14) status = 'LIVE';
+
+        return { ...t, status };
     });
-
-    const matchesWithStreams = assignStreamsToMatches(allMatches);
-
-    return {
-        matches: matchesWithStreams,
-        liveCount: matchesWithStreams.filter(m => isLiveStatus(m)).length,
-        withStreams: matchesWithStreams.filter(m => m.hasStream).length
-    };
 };
 
 module.exports = {
-    getTennisMatches,
-    getTennisMatch
+    getTennisEvents,
+    getStreamInfo,
 };

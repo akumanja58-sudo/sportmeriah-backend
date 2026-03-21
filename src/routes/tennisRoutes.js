@@ -1,14 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const {
-    getTennisMatches,
-    getTennisMatch
-} = require('../controllers/tennisController');
+const { getTennisEvents, getStreamInfo } = require('../controllers/tennisController');
 
-// GET /api/tennis - Get all tennis matches (today + tomorrow with streams)
-router.get('/', getTennisMatches);
+// GET /api/tennis - Get all tennis events & channels
+router.get('/', getTennisEvents);
 
-// GET /api/tennis/:id - Get single match by ID
-router.get('/:id', getTennisMatch);
+// GET /api/tennis/stream/:streamId - Get stream info by ID
+router.get('/stream/:streamId', getStreamInfo);
 
 module.exports = router;
