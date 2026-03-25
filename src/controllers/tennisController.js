@@ -1,14 +1,29 @@
 const axios = require('axios');
 
 // ========================
-// IPTV PROVIDER CONFIG
+// SPHERE IPTV CONFIG (Multi-Account Ready)
 // ========================
+const SPHERE_ACCOUNTS = [
+    {
+        server: process.env.IPTV_SERVER || 's.rocketdns.info',
+        port: process.env.IPTV_PORT || '8080',
+        user: process.env.IPTV_USER || '5986529',
+        pass: process.env.IPTV_PASS || '0044003',
+        protocol: process.env.IPTV_PROTOCOL || 'http',
+        label: 'sphere-1'
+    },
+    // Tambah akun baru di sini:
+    // {
+    //     server: process.env.IPTV_SERVER_2 || 's.rocketdns.info',
+    //     port: process.env.IPTV_PORT_2 || '8080',
+    //     user: process.env.IPTV_USER_2 || 'xxx',
+    //     pass: process.env.IPTV_PASS_2 || 'xxx',
+    //     protocol: process.env.IPTV_PROTOCOL_2 || 'http',
+    //     label: 'sphere-2'
+    // },
+];
 
-const SPHERE_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
-const SPHERE_PORT = process.env.IPTV_PORT || '8080';
-const SPHERE_USER = process.env.IPTV_USER || '5986529';
-const SPHERE_PASS = process.env.IPTV_PASS || '0044003';
-const SPHERE_PROTOCOL = process.env.IPTV_PROTOCOL || 'http';
+const PRIMARY = SPHERE_ACCOUNTS[0];
 
 // VPS Config (HLS proxy)
 const VPS_STREAM_BASE = process.env.VPS_STREAM_URL || 'https://stream.nobarmeriah.com';
@@ -114,9 +129,11 @@ const getTennisEvents = async (req, res) => {
 // FETCH FUNCTIONS
 // ========================
 
-const fetchSphereChannels = async () => {
+const fetchSphereChannels = async (account) => {
+    const acc = account || PRIMARY;
     const now = Date.now();
-    if (channelCache.data && channelCache.lastFetch && (now - channelCache.lastFetch < channelCache.ttl)) {
+
+    if (acc === PRIMARY && channelCache.data && channelCache.lastFetch && (now - channelCache.lastFetch < channelCache.ttl)) {
         return channelCache.data;
     }
 
@@ -124,10 +141,10 @@ const fetchSphereChannels = async () => {
 
     for (const category of SPHERE_TENNIS_CATEGORIES) {
         try {
-            const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}:${SPHERE_PORT}/player_api.php`, {
+            const response = await axios.get(`${acc.protocol}://${acc.server}:${acc.port}/player_api.php`, {
                 params: {
-                    username: SPHERE_USER,
-                    password: SPHERE_PASS,
+                    username: acc.user,
+                    password: acc.pass,
                     action: 'get_live_streams',
                     category_id: category.id
                 },
@@ -147,7 +164,7 @@ const fetchSphereChannels = async () => {
                 allChannels.push(...channels);
             }
         } catch (err) {
-            console.error('Error fetching Sphere tennis:', err.message);
+            console.error(`[Sphere/${acc.label}] Error fetching tennis:`, err.message);
         }
     }
 
@@ -159,18 +176,20 @@ const fetchSphereChannels = async () => {
         return true;
     });
 
-    channelCache.data = unique;
-    channelCache.lastFetch = now;
+    if (acc === PRIMARY) {
+        channelCache.data = unique;
+        channelCache.lastFetch = now;
+    }
 
     return unique;
 };
 
 const fetchSportsTVChannels = async () => {
     try {
-        const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}:${SPHERE_PORT}/player_api.php`, {
+        const response = await axios.get(`${PRIMARY.protocol}://${PRIMARY.server}:${PRIMARY.port}/player_api.php`, {
             params: {
-                username: SPHERE_USER,
-                password: SPHERE_PASS,
+                username: PRIMARY.user,
+                password: PRIMARY.pass,
                 action: 'get_live_streams',
                 category_id: SPORTS_TV_CATEGORY
             },

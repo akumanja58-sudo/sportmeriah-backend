@@ -5,14 +5,29 @@ const API_F1_KEY = process.env.FOOTBALL_API_KEY;
 const API_F1_URL = 'https://v1.formula-1.api-sports.io';
 
 // ========================
-// IPTV PROVIDER CONFIG
+// SPHERE IPTV CONFIG (Multi-Account Ready)
 // ========================
+const SPHERE_ACCOUNTS = [
+    {
+        server: process.env.IPTV_SERVER || 's.rocketdns.info',
+        port: process.env.IPTV_PORT || '8080',
+        user: process.env.IPTV_USER || '5986529',
+        pass: process.env.IPTV_PASS || '0044003',
+        protocol: process.env.IPTV_PROTOCOL || 'http',
+        label: 'sphere-1'
+    },
+    // Tambah akun baru di sini:
+    // {
+    //     server: process.env.IPTV_SERVER_2 || 's.rocketdns.info',
+    //     port: process.env.IPTV_PORT_2 || '8080',
+    //     user: process.env.IPTV_USER_2 || 'xxx',
+    //     pass: process.env.IPTV_PASS_2 || 'xxx',
+    //     protocol: process.env.IPTV_PROTOCOL_2 || 'http',
+    //     label: 'sphere-2'
+    // },
+];
 
-const SPHERE_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
-const SPHERE_PORT = process.env.IPTV_PORT || '8080';
-const SPHERE_USER = process.env.IPTV_USER || '5986529';
-const SPHERE_PASS = process.env.IPTV_PASS || '0044003';
-const SPHERE_PROTOCOL = process.env.IPTV_PROTOCOL || 'http';
+const PRIMARY = SPHERE_ACCOUNTS[0];
 
 // VPS Config (HLS proxy)
 const VPS_STREAM_BASE = process.env.VPS_STREAM_URL || 'https://stream.nobarmeriah.com';
@@ -71,20 +86,19 @@ const getMotorsportEvents = async (req, res) => {
         const otherChannels = sphereChannels.filter(ch => {
             const name = ch.name.toLowerCase();
             return !name.includes('formula') && !name.includes('f1') && !name.includes('formula one') &&
-                   !name.includes('motogp') && !name.includes('moto gp') && !name.includes('moto2') && !name.includes('moto3');
+                !name.includes('motogp') && !name.includes('moto gp') && !name.includes('moto2') && !name.includes('moto3');
         });
 
         // Filter out empty/placeholder channels
         const activeChannels = sphereChannels.filter(ch => {
             const name = ch.name.trim();
-            // Remove channels that end with ":" and nothing else (empty slots)
-            const cleanName = name.replace(/^MOTORSPORT\s*\d+\s*:\s*/i, '').trim();
+            const cleanName = name.replace(/^MOTORSPORT\s*\d*\s*:\s*/i, '').trim();
             return cleanName.length > 0;
         });
 
         const emptyChannels = sphereChannels.filter(ch => {
             const name = ch.name.trim();
-            const cleanName = name.replace(/^MOTORSPORT\s*\d+\s*:\s*/i, '').trim();
+            const cleanName = name.replace(/^MOTORSPORT\s*\d*\s*:\s*/i, '').trim();
             return cleanName.length === 0;
         });
 
@@ -122,16 +136,16 @@ const getMotorsportEvents = async (req, res) => {
 // FETCH FUNCTIONS
 // ========================
 
-// Fetch Sphere IPTV channels for motorsport
-const fetchSphereChannels = async () => {
+const fetchSphereChannels = async (account) => {
+    const acc = account || PRIMARY;
     const allChannels = [];
 
     for (const category of SPHERE_MOTORSPORT_CATEGORIES) {
         try {
-            const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}:${SPHERE_PORT}/player_api.php`, {
+            const response = await axios.get(`${acc.protocol}://${acc.server}:${acc.port}/player_api.php`, {
                 params: {
-                    username: SPHERE_USER,
-                    password: SPHERE_PASS,
+                    username: acc.user,
+                    password: acc.pass,
                     action: 'get_live_streams',
                     category_id: category.id
                 },
@@ -153,7 +167,7 @@ const fetchSphereChannels = async () => {
                 allChannels.push(...channels);
             }
         } catch (err) {
-            console.error(`Error fetching Sphere motorsport:`, err.message);
+            console.error(`[Sphere/${acc.label}] Error fetching motorsport:`, err.message);
         }
     }
 
@@ -166,13 +180,12 @@ const fetchSphereChannels = async () => {
     });
 };
 
-// Fetch Sports TV channels from Sphere Category 122
 const fetchSportsTVChannels = async () => {
     try {
-        const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}:${SPHERE_PORT}/player_api.php`, {
+        const response = await axios.get(`${PRIMARY.protocol}://${PRIMARY.server}:${PRIMARY.port}/player_api.php`, {
             params: {
-                username: SPHERE_USER,
-                password: SPHERE_PASS,
+                username: PRIMARY.user,
+                password: PRIMARY.pass,
                 action: 'get_live_streams',
                 category_id: SPORTS_TV_CATEGORY
             },
@@ -227,7 +240,6 @@ const fetchF1Races = async () => {
                 const raceDate = new Date(race.date);
                 let status = 'UPCOMING';
                 if (raceDate < now) status = 'FINISHED';
-                // If race is today, mark as LIVE
                 if (raceDate.toDateString() === now.toDateString()) status = 'LIVE';
 
                 return {
@@ -261,7 +273,6 @@ const getStreamInfo = async (req, res) => {
 
         const streamUrl = `${VPS_STREAM_BASE}/hls/sphere_${streamId}.m3u8`;
 
-        // Try to find channel info
         const channels = await fetchSphereChannels();
         const sportsTVChannels = await fetchSportsTVChannels();
         const allChannels = [...channels, ...sportsTVChannels];
@@ -301,7 +312,6 @@ const getStreamInfo = async (req, res) => {
 // HELPER FUNCTIONS
 // ========================
 
-// Detect league from channel name
 const detectLeague = (name) => {
     const lower = name.toLowerCase();
     if (lower.includes('formula') || lower.includes('f1')) return 'Formula 1';
@@ -314,27 +324,6 @@ const detectLeague = (name) => {
     if (lower.includes('wrc') || lower.includes('rally')) return 'WRC';
     if (lower.includes('superbike') || lower.includes('wsbk')) return 'WorldSBK';
     return 'Motorsport';
-};
-
-// Parse channel name for clean display
-const parseChannelName = (name) => {
-    if (!name) return { title: 'Motorsport Live', event: null, league: 'Motorsport' };
-
-    let cleanName = name;
-
-    // Remove prefix like "MOTORSPORT 01: " 
-    cleanName = cleanName.replace(/^MOTORSPORT\s*\d*\s*:\s*/i, '');
-    
-    // Remove time suffix like "@ 12:55 PM"
-    cleanName = cleanName.replace(/\s*@\s*[\d:]+\s*(AM|PM)?.*$/i, '');
-
-    const league = detectLeague(name);
-
-    return {
-        title: cleanName.trim() || 'Motorsport Live',
-        event: cleanName.trim(),
-        league: league
-    };
 };
 
 const isExcludedChannel = (name) => {
