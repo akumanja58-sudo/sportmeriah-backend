@@ -4,24 +4,39 @@ const axios = require('axios');
 const API_FOOTBALL_KEY = process.env.FOOTBALL_API_KEY;
 const API_FOOTBALL_URL = 'https://v3.football.api-sports.io';
 
-// IPTV config - SphereIPTV
-const IPTV_BASE_URL = process.env.IPTV_SERVER;
-const IPTV_PORT = process.env.IPTV_PORT || '8080';
-const IPTV_PROTOCOL = process.env.IPTV_PROTOCOL || 'http';
-const IPTV_USERNAME = process.env.IPTV_USER;
-const IPTV_PASSWORD = process.env.IPTV_PASS;
+// ========================
+// SPHERE IPTV CONFIG (Multi-Account Ready)
+// ========================
+const SPHERE_ACCOUNTS = [
+    {
+        server: process.env.IPTV_SERVER || 's.rocketdns.info',
+        port: process.env.IPTV_PORT || '8080',
+        user: process.env.IPTV_USER || '5986529',
+        pass: process.env.IPTV_PASS || '0044003',
+        protocol: process.env.IPTV_PROTOCOL || 'http',
+        label: 'sphere-1'
+    },
+    // Tambah akun baru di sini:
+    // {
+    //     server: process.env.IPTV_SERVER_2 || 's.rocketdns.info',
+    //     port: process.env.IPTV_PORT_2 || '8080',
+    //     user: process.env.IPTV_USER_2 || 'xxx',
+    //     pass: process.env.IPTV_PASS_2 || 'xxx',
+    //     protocol: process.env.IPTV_PROTOCOL_2 || 'http',
+    //     label: 'sphere-2'
+    // },
+];
 
-// IPTV config - PearlIPTV (fallback provider)
-const PEARL_SERVER = process.env.PEARL_SERVER || 'pearlhost2.one';
-const PEARL_USER = process.env.PEARL_USER || 'pearliptv669';
-const PEARL_PASS = process.env.PEARL_PASS || 'gwb66he3zc';
-const PEARL_PORT = process.env.PEARL_PORT || '80';
+// Primary account (for channel fetching / matching)
+const PRIMARY = SPHERE_ACCOUNTS[0];
 
 // VPS Config
 const VPS_IP = process.env.VPS_IP || '173.249.27.15';
 
-// IPTV Categories for Football
-const IPTV_FOOTBALL_CATEGORIES = [
+// ========================
+// SPHERE FOOTBALL CATEGORIES
+// ========================
+const SPHERE_FOOTBALL_CATEGORIES = [
     // UEFA Competitions
     '1497',  // US| UEFA PPV (Europa League, Conference League, Champions League)
     '921',   // UK| UEFA PPV
@@ -319,86 +334,38 @@ const TEAM_ALIASES = {
     'utrecht': ['fc utrecht', 'utrecht'],
 };
 
-// ========== PEARLIPTV CATEGORIES ==========
-const PEARL_FOOTBALL_CATEGORIES = [
-    { id: '1193', name: 'LA LIGA SPORT', league_id: 140 },
-    { id: '1192', name: 'LEAGUES SERIE A', league_id: 135 },
-    { id: '1936', name: 'SERIE A (US)', league_id: 135 },
-    { id: '2281', name: 'BUNDESLIGA PPV', league_id: 78 },
-    { id: '2278', name: 'BUNDESLIGA PPV 2', league_id: 78 },
-    { id: '1933', name: 'LIGUE PLUS', league_id: 61 },
-    { id: '1796', name: 'DAZN LIGUE 1', league_id: 61 },
-    { id: '1677', name: 'UEFA CHAMPIONS LEAGUE (UK)', league_id: 2 },
-    { id: '2132', name: 'UEFA CHAMPIONS LEAGUE (CA)', league_id: 2 },
-    { id: '1678', name: 'UEFA EUROPA LEAGUE', league_id: 3 },
-    { id: '2453', name: 'UEFA EUROPA LEAGUE 2', league_id: 3 },
-    { id: '1932', name: 'SAUDI PRO LEAGUE', league_id: 307 },
-    { id: '1310', name: 'EPL PREMIER LEAGUE', league_id: 39 },
-    { id: '2283', name: 'PREMIER LEAGUE PPV', league_id: 39 },
-    { id: '2084', name: 'WORLD FOOTBALL EVENTS', league_id: null },
-];
-
-// PearlIPTV La Liga team → stream ID mapping
-const PEARL_LA_LIGA_TEAMS = {
-    'alaves': 511016, 'deportivo alaves': 511016, 'alavés': 511016,
-    'almeria': 511015,
-    'athletic bilbao': 511014, 'athletic club': 511014, 'athletic': 511014,
-    'atletico madrid': 511013, 'atletico': 511013, 'atlético madrid': 511013, 'atleti': 511013,
-    'barcelona': 511012, 'barca': 511012, 'barça': 511012,
-    'cadiz': 511011,
-    'celta vigo': 511010, 'celta': 511010, 'celta de vigo': 511010,
-    'getafe': 511009,
-    'girona': 511008,
-    'granada': 511007,
-    'las palmas': 511006,
-    'mallorca': 511005,
-    'osasuna': 511004,
-    'rayo vallecano': 511003, 'rayo': 511003,
-    'real betis': 511002, 'betis': 511002,
-    'real madrid': 511001, 'madrid': 511001,
-    'real sociedad': 511000, 'la real': 511000, 'sociedad': 511000,
-    'sevilla': 510999,
-    'valencia': 510998,
-    'villarreal': 510997,
-    'espanyol': null,
-    'leganes': null, 'leganés': null,
-    'valladolid': null,
-};
-
-// Cache for IPTV channels
-let iptvCache = {
+// ========================
+// CACHES
+// ========================
+let sphereCache = {
     data: null,
     lastFetch: null,
     ttl: 5 * 60 * 1000 // 5 minutes
 };
 
-// Cache for PearlIPTV channels
-let pearlCache = {
-    data: null,
-    lastFetch: null,
-    ttl: 5 * 60 * 1000 // 5 minutes
-};
-
-// Cache for fixtures
 let fixturesCache = {
     data: null,
     lastFetch: null,
     ttl: 5 * 60 * 1000 // 5 minutes
 };
 
-// ========== FETCH IPTV CHANNELS ==========
-async function fetchIPTVChannels() {
+// ========================
+// FETCH SPHERE IPTV CHANNELS
+// ========================
+async function fetchSphereChannels(account) {
+    const acc = account || PRIMARY;
     const now = Date.now();
 
-    if (iptvCache.data && iptvCache.lastFetch && (now - iptvCache.lastFetch < iptvCache.ttl)) {
-        return iptvCache.data;
+    // Use cache only for primary account
+    if (acc === PRIMARY && sphereCache.data && sphereCache.lastFetch && (now - sphereCache.lastFetch < sphereCache.ttl)) {
+        return sphereCache.data;
     }
 
     try {
-        const fetchPromises = IPTV_FOOTBALL_CATEGORIES.map(categoryId => {
-            const url = `${IPTV_PROTOCOL}://${IPTV_BASE_URL}:${IPTV_PORT}/player_api.php?username=${IPTV_USERNAME}&password=${IPTV_PASSWORD}&action=get_live_streams&category_id=${categoryId}`;
+        const fetchPromises = SPHERE_FOOTBALL_CATEGORIES.map(categoryId => {
+            const url = `${acc.protocol}://${acc.server}:${acc.port}/player_api.php?username=${acc.user}&password=${acc.pass}&action=get_live_streams&category_id=${categoryId}`;
             return axios.get(url, { timeout: 10000 }).catch(err => {
-                console.error(`Failed to fetch category ${categoryId}:`, err.message);
+                console.error(`[Sphere/${acc.label}] Failed to fetch category ${categoryId}:`, err.message);
                 return { data: [] };
             });
         });
@@ -416,19 +383,23 @@ async function fetchIPTVChannels() {
             index === self.findIndex(c => c.stream_id === channel.stream_id)
         );
 
-        console.log(`[IPTV] Fetched ${uniqueChannels.length} unique channels from ${IPTV_FOOTBALL_CATEGORIES.length} categories`);
+        console.log(`[Sphere/${acc.label}] Fetched ${uniqueChannels.length} unique channels from ${SPHERE_FOOTBALL_CATEGORIES.length} categories`);
 
-        iptvCache.data = uniqueChannels;
-        iptvCache.lastFetch = now;
+        if (acc === PRIMARY) {
+            sphereCache.data = uniqueChannels;
+            sphereCache.lastFetch = now;
+        }
 
-        return iptvCache.data;
+        return uniqueChannels;
     } catch (error) {
-        console.error('Failed to fetch IPTV channels:', error.message);
-        return iptvCache.data || [];
+        console.error(`[Sphere/${acc.label}] Failed to fetch channels:`, error.message);
+        return (acc === PRIMARY && sphereCache.data) ? sphereCache.data : [];
     }
 }
 
-// ========== NORMALIZE TEAM NAME ==========
+// ========================
+// TEAM NAME HELPERS
+// ========================
 function normalizeTeamName(name) {
     if (!name) return '';
     return name
@@ -440,168 +411,10 @@ function normalizeTeamName(name) {
         .trim();
 }
 
-// ========== FETCH PEARLIPTV CHANNELS ==========
-async function fetchPearlIPTVChannels() {
-    const now = Date.now();
-
-    if (pearlCache.data && pearlCache.lastFetch && (now - pearlCache.lastFetch < pearlCache.ttl)) {
-        return pearlCache.data;
-    }
-
-    try {
-        const fetchPromises = PEARL_FOOTBALL_CATEGORIES.map(category => {
-            const url = `http://${PEARL_SERVER}:${PEARL_PORT}/player_api.php?username=${PEARL_USER}&password=${PEARL_PASS}&action=get_live_streams&category_id=${category.id}`;
-            return axios.get(url, { timeout: 10000 }).then(res => ({
-                data: res.data,
-                category: category
-            })).catch(err => {
-                console.error(`[Pearl] Failed to fetch category ${category.id}:`, err.message);
-                return { data: [], category: category };
-            });
-        });
-
-        const responses = await Promise.all(fetchPromises);
-
-        let allChannels = [];
-        responses.forEach(res => {
-            if (res.data && Array.isArray(res.data)) {
-                const channels = res.data
-                    .filter(ch => ch.name && !ch.name.includes('✦ ✦ ✦'))
-                    .map(ch => ({
-                        ...ch,
-                        _pearl_category: res.category.name,
-                        _pearl_league_id: res.category.league_id,
-                        _provider: 'pearl'
-                    }));
-                allChannels = [...allChannels, ...channels];
-            }
-        });
-
-        const uniqueChannels = allChannels.filter((channel, index, self) =>
-            index === self.findIndex(c => c.stream_id === channel.stream_id)
-        );
-
-        console.log(`[PearlIPTV] Fetched ${uniqueChannels.length} unique channels from ${PEARL_FOOTBALL_CATEGORIES.length} categories`);
-
-        pearlCache.data = uniqueChannels;
-        pearlCache.lastFetch = now;
-
-        return pearlCache.data;
-    } catch (error) {
-        console.error('[PearlIPTV] Failed to fetch channels:', error.message);
-        return pearlCache.data || [];
-    }
-}
-
-// ========== FIND PEARL STREAM FOR FIXTURE ==========
-function findPearlStreamForFixture(fixture) {
-    const homeTeam = fixture.teams.home.name;
-    const awayTeam = fixture.teams.away.name;
-    const leagueId = fixture.league.id;
-
-    // La Liga OR Copa del Rey (same teams!) - use direct team mapping
-    const useTeamMapping = leagueId === 140 || leagueId === 143;
-
-    if (useTeamMapping) {
-        const homeNorm = normalizeTeamName(homeTeam);
-        const awayNorm = normalizeTeamName(awayTeam);
-        const homeVariations = getTeamVariations(homeTeam);
-        const awayVariations = getTeamVariations(awayTeam);
-
-        // Try home team first
-        for (const v of homeVariations) {
-            if (PEARL_LA_LIGA_TEAMS[v] !== undefined && PEARL_LA_LIGA_TEAMS[v] !== null) {
-                return {
-                    stream_id: PEARL_LA_LIGA_TEAMS[v],
-                    channel_name: `LA LIGA - ${homeTeam}`,
-                    provider: 'pearl'
-                };
-            }
-        }
-
-        // Try away team
-        for (const v of awayVariations) {
-            if (PEARL_LA_LIGA_TEAMS[v] !== undefined && PEARL_LA_LIGA_TEAMS[v] !== null) {
-                return {
-                    stream_id: PEARL_LA_LIGA_TEAMS[v],
-                    channel_name: `LA LIGA - ${awayTeam}`,
-                    provider: 'pearl'
-                };
-            }
-        }
-    }
-
-    return null;
-}
-
-// ========== SUPPORTED LEAGUES FOR PEARLIPTV ==========
-const PEARL_SUPPORTED_LEAGUES = new Set(
-    PEARL_FOOTBALL_CATEGORIES
-        .filter(c => c.league_id !== null)
-        .map(c => c.league_id)
-);
-
-// Leagues where Copa/Cup competition teams overlap with league teams
-// Copa del Rey teams are La Liga teams, Coppa Italia teams are Serie A teams, etc.
-const CUP_TO_LEAGUE_MAP = {
-    143: 140,  // Copa del Rey → La Liga
-    137: 135,  // Coppa Italia → Serie A
-    66: 61,    // Coupe de France → Ligue 1
-    529: null,  // Super Cup → check both teams
-};
-
-// ========== FIND PEARL STREAM BY CHANNEL MATCHING ==========
-function findPearlStreamByChannelMatch(homeTeam, awayTeam, pearlChannels, leagueId) {
-    const homeVariations = getTeamVariations(homeTeam);
-    const awayVariations = getTeamVariations(awayTeam);
-
-    // Only try channels from the matching league category
-    const targetLeagueId = CUP_TO_LEAGUE_MAP[leagueId] !== undefined
-        ? CUP_TO_LEAGUE_MAP[leagueId]
-        : leagueId;
-
-    // Filter channels to only those from the relevant league
-    const relevantChannels = targetLeagueId
-        ? pearlChannels.filter(ch => ch._pearl_league_id === targetLeagueId)
-        : pearlChannels;
-
-    for (const channel of relevantChannels) {
-        const channelName = channel.name.toLowerCase();
-
-        // Check if channel has both teams (vs format) - best match
-        const hasHome = homeVariations.some(v => v.length >= 4 && channelName.includes(v));
-        const hasAway = awayVariations.some(v => v.length >= 4 && channelName.includes(v));
-
-        if (hasHome && hasAway) {
-            return {
-                stream_id: channel.stream_id,
-                channel_name: channel.name,
-                provider: 'pearl'
-            };
-        }
-
-        // For per-team channels (like "LA LIGA - Atletico Madrid"), match either team
-        // BUT only if channel is from the correct league category
-        if (channel._pearl_league_id && channel._pearl_league_id === targetLeagueId) {
-            if (hasHome || hasAway) {
-                return {
-                    stream_id: channel.stream_id,
-                    channel_name: channel.name,
-                    provider: 'pearl'
-                };
-            }
-        }
-    }
-
-    return null;
-}
-
-// ========== GET ALL TEAM VARIATIONS ==========
 function getTeamVariations(teamName) {
     const normalized = normalizeTeamName(teamName);
     const variations = new Set([normalized, teamName.toLowerCase()]);
 
-    // Check aliases
     for (const [key, values] of Object.entries(TEAM_ALIASES)) {
         if (normalized.includes(key) || key.includes(normalized) || teamName.toLowerCase().includes(key)) {
             values.forEach(v => variations.add(v.toLowerCase()));
@@ -611,7 +424,9 @@ function getTeamVariations(teamName) {
     return Array.from(variations);
 }
 
-// ========== PARSE TEAMS FROM IPTV CHANNEL NAME ==========
+// ========================
+// PARSE TEAMS FROM CHANNEL NAME
+// ========================
 function parseTeamsFromChannel(channelName) {
     if (!channelName) return null;
 
@@ -630,7 +445,6 @@ function parseTeamsFromChannel(channelName) {
         awayTeam = uefaMatch[2].trim();
     }
 
-    // Pattern 2: "... : TeamA vs TeamB @ ..."
     // Pattern 2: "... : TeamA vs TeamB @ ..."
     // Use LAST colon before "vs" to handle formats like:
     // "USA Soccer01: England - Premier League : Crystal Palace vs Leeds United @ 10:00am EDT"
@@ -654,7 +468,7 @@ function parseTeamsFromChannel(channelName) {
         }
     }
 
-    // Pattern 2b: "... | TeamA vs. TeamB | ..." (pipe separated - Pearl UCL format)
+    // Pattern 2b: "... | TeamA vs. TeamB | ..." (pipe separated)
     if (!homeTeam) {
         const pipeVsMatch = name.match(/\|\s*(.+?)\s+vs\.?\s+(.+?)\s*\|/i);
         if (pipeVsMatch) {
@@ -681,7 +495,9 @@ function parseTeamsFromChannel(channelName) {
     return { homeTeam, awayTeam };
 }
 
-// ========== CHECK IF TEAMS MATCH ==========
+// ========================
+// TEAM MATCHING
+// ========================
 const TEAM_CONFLICTS = [
     ['manchester city', 'manchester united'],
     ['sheffield united', 'sheffield wednesday'],
@@ -719,7 +535,24 @@ function teamsMatch(iptvTeam, apiTeam) {
     return false;
 }
 
-// ========== FETCH TODAY'S FIXTURES FROM API ==========
+// ========================
+// FIXTURE HELPERS
+// ========================
+function findFixtureForStream(iptvHome, iptvAway, fixtures) {
+    for (const fixture of fixtures) {
+        const apiHome = fixture.teams.home.name;
+        const apiAway = fixture.teams.away.name;
+
+        if (teamsMatch(iptvHome, apiHome) && teamsMatch(iptvAway, apiAway)) {
+            return fixture;
+        }
+        if (teamsMatch(iptvHome, apiAway) && teamsMatch(iptvAway, apiHome)) {
+            return fixture;
+        }
+    }
+    return null;
+}
+
 async function fetchTodayFixtures() {
     const now = Date.now();
 
@@ -767,39 +600,57 @@ async function fetchTodayFixtures() {
     }
 }
 
-// ========== FIND FIXTURE FOR IPTV STREAM ==========
-function findFixtureForStream(iptvHome, iptvAway, fixtures) {
-    for (const fixture of fixtures) {
-        const apiHome = fixture.teams.home.name;
-        const apiAway = fixture.teams.away.name;
-
-        // Check normal order
-        if (teamsMatch(iptvHome, apiHome) && teamsMatch(iptvAway, apiAway)) {
-            return fixture;
-        }
-
-        // Check reversed order
-        if (teamsMatch(iptvHome, apiAway) && teamsMatch(iptvAway, apiHome)) {
-            return fixture;
-        }
-    }
-
-    return null;
+// ========================
+// HELPER: Build fixture response object
+// ========================
+function buildFixtureResponse(fixture, stream) {
+    return {
+        id: fixture.fixture.id,
+        date: fixture.fixture.date,
+        timestamp: fixture.fixture.timestamp,
+        status: {
+            short: fixture.fixture.status.short,
+            long: fixture.fixture.status.long,
+            elapsed: fixture.fixture.status.elapsed
+        },
+        league: {
+            id: fixture.league.id,
+            name: fixture.league.name,
+            country: fixture.league.country,
+            logo: fixture.league.logo
+        },
+        teams: {
+            home: {
+                name: fixture.teams.home.name,
+                logo: fixture.teams.home.logo
+            },
+            away: {
+                name: fixture.teams.away.name,
+                logo: fixture.teams.away.logo
+            }
+        },
+        goals: {
+            home: fixture.goals.home,
+            away: fixture.goals.away
+        },
+        stream: stream
+    };
 }
 
-// ========== MAIN: GET TODAY'S FIXTURES (IPTV-FIRST APPROACH) ==========
+// ========================================================================
+// ENDPOINTS
+// ========================================================================
+
+// ========== GET TODAY'S FIXTURES (IPTV-FIRST) ==========
 exports.getTodayFixtures = async (req, res) => {
     try {
-        // Step 1: Fetch IPTV channels from BOTH providers
-        const [iptvChannels, pearlChannels] = await Promise.all([
-            fetchIPTVChannels(),
-            fetchPearlIPTVChannels()
-        ]);
-        console.log(`[Step 1] Got ${iptvChannels.length} SphereIPTV channels, ${pearlChannels.length} PearlIPTV channels`);
+        // Step 1: Fetch Sphere channels
+        const sphereChannels = await fetchSphereChannels();
+        console.log(`[Step 1] Got ${sphereChannels.length} Sphere channels`);
 
-        // Step 2: Parse teams from SphereIPTV channels
+        // Step 2: Parse teams from channels
         const parsedStreams = [];
-        for (const channel of iptvChannels) {
+        for (const channel of sphereChannels) {
             const parsed = parseTeamsFromChannel(channel.name);
             if (parsed) {
                 parsedStreams.push({
@@ -811,13 +662,13 @@ exports.getTodayFixtures = async (req, res) => {
                 });
             }
         }
-        console.log(`[Step 2] Parsed ${parsedStreams.length} SphereIPTV streams with team names`);
+        console.log(`[Step 2] Parsed ${parsedStreams.length} streams with team names`);
 
         // Step 3: Fetch fixtures from API-Football
         const allFixtures = await fetchTodayFixtures();
         console.log(`[Step 3] Got ${allFixtures.length} fixtures from API`);
 
-        // Step 4: Match IPTV streams with fixtures (SphereIPTV first)
+        // Step 4: Match streams with fixtures
         const matchedFixtures = [];
         const usedFixtureIds = new Set();
 
@@ -827,153 +678,17 @@ exports.getTodayFixtures = async (req, res) => {
             if (fixture && !usedFixtureIds.has(fixture.fixture.id)) {
                 usedFixtureIds.add(fixture.fixture.id);
 
-                matchedFixtures.push({
-                    id: fixture.fixture.id,
-                    date: fixture.fixture.date,
-                    timestamp: fixture.fixture.timestamp,
-                    status: {
-                        short: fixture.fixture.status.short,
-                        long: fixture.fixture.status.long,
-                        elapsed: fixture.fixture.status.elapsed
-                    },
-                    league: {
-                        id: fixture.league.id,
-                        name: fixture.league.name,
-                        country: fixture.league.country,
-                        logo: fixture.league.logo
-                    },
-                    teams: {
-                        home: {
-                            name: fixture.teams.home.name,
-                            logo: fixture.teams.home.logo
-                        },
-                        away: {
-                            name: fixture.teams.away.name,
-                            logo: fixture.teams.away.logo
-                        }
-                    },
-                    goals: {
-                        home: fixture.goals.home,
-                        away: fixture.goals.away
-                    },
-                    stream: {
-                        stream_id: stream.stream_id,
-                        channel_name: stream.channel_name,
-                        provider: 'sphere'
-                    }
-                });
+                matchedFixtures.push(buildFixtureResponse(fixture, {
+                    stream_id: stream.stream_id,
+                    channel_name: stream.channel_name,
+                    provider: 'sphere'
+                }));
 
-                console.log(`[Match-Sphere] ${stream.homeTeam} vs ${stream.awayTeam} → ${fixture.teams.home.name} vs ${fixture.teams.away.name}`);
+                console.log(`[Match] ${stream.homeTeam} vs ${stream.awayTeam} → ${fixture.teams.home.name} vs ${fixture.teams.away.name}`);
             }
         }
 
-        // Step 4b: PearlIPTV fallback - find matches not yet matched
-        // ONLY try Pearl for leagues that Pearl supports (or cup competitions with overlapping teams)
-        const pearlSupportedOrCupLeagues = new Set([
-            ...PEARL_SUPPORTED_LEAGUES,
-            ...Object.keys(CUP_TO_LEAGUE_MAP).map(Number)
-        ]);
-
-        for (const fixture of allFixtures) {
-            if (usedFixtureIds.has(fixture.fixture.id)) continue;
-
-            const fixtureLeagueId = fixture.league.id;
-
-            // Skip leagues that Pearl doesn't support at all
-            if (!pearlSupportedOrCupLeagues.has(fixtureLeagueId)) continue;
-
-            // Try La Liga team mapping first
-            const pearlStream = findPearlStreamForFixture(fixture);
-            if (pearlStream) {
-                usedFixtureIds.add(fixture.fixture.id);
-                matchedFixtures.push({
-                    id: fixture.fixture.id,
-                    date: fixture.fixture.date,
-                    timestamp: fixture.fixture.timestamp,
-                    status: {
-                        short: fixture.fixture.status.short,
-                        long: fixture.fixture.status.long,
-                        elapsed: fixture.fixture.status.elapsed
-                    },
-                    league: {
-                        id: fixture.league.id,
-                        name: fixture.league.name,
-                        country: fixture.league.country,
-                        logo: fixture.league.logo
-                    },
-                    teams: {
-                        home: {
-                            name: fixture.teams.home.name,
-                            logo: fixture.teams.home.logo
-                        },
-                        away: {
-                            name: fixture.teams.away.name,
-                            logo: fixture.teams.away.logo
-                        }
-                    },
-                    goals: {
-                        home: fixture.goals.home,
-                        away: fixture.goals.away
-                    },
-                    stream: {
-                        stream_id: pearlStream.stream_id,
-                        channel_name: pearlStream.channel_name,
-                        provider: 'pearl'
-                    }
-                });
-                console.log(`[Match-Pearl-Map] ${fixture.teams.home.name} vs ${fixture.teams.away.name} → ${pearlStream.channel_name}`);
-                continue;
-            }
-
-            // Try PearlIPTV channel name matching
-            const pearlChannelMatch = findPearlStreamByChannelMatch(
-                fixture.teams.home.name,
-                fixture.teams.away.name,
-                pearlChannels,
-                fixture.league.id
-            );
-            if (pearlChannelMatch) {
-                usedFixtureIds.add(fixture.fixture.id);
-                matchedFixtures.push({
-                    id: fixture.fixture.id,
-                    date: fixture.fixture.date,
-                    timestamp: fixture.fixture.timestamp,
-                    status: {
-                        short: fixture.fixture.status.short,
-                        long: fixture.fixture.status.long,
-                        elapsed: fixture.fixture.status.elapsed
-                    },
-                    league: {
-                        id: fixture.league.id,
-                        name: fixture.league.name,
-                        country: fixture.league.country,
-                        logo: fixture.league.logo
-                    },
-                    teams: {
-                        home: {
-                            name: fixture.teams.home.name,
-                            logo: fixture.teams.home.logo
-                        },
-                        away: {
-                            name: fixture.teams.away.name,
-                            logo: fixture.teams.away.logo
-                        }
-                    },
-                    goals: {
-                        home: fixture.goals.home,
-                        away: fixture.goals.away
-                    },
-                    stream: {
-                        stream_id: pearlChannelMatch.stream_id,
-                        channel_name: pearlChannelMatch.channel_name,
-                        provider: 'pearl'
-                    }
-                });
-                console.log(`[Match-Pearl-Ch] ${fixture.teams.home.name} vs ${fixture.teams.away.name} → ${pearlChannelMatch.channel_name}`);
-            }
-        }
-
-        console.log(`[Step 4] Matched ${matchedFixtures.length} fixtures (Sphere + Pearl fallback)`);
+        console.log(`[Step 4] Matched ${matchedFixtures.length} fixtures`);
 
         // Step 5: Filter and sort
         const now = Date.now();
@@ -1014,24 +729,17 @@ exports.getTodayFixtures = async (req, res) => {
 
     } catch (error) {
         console.error('Failed to process fixtures:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 };
 
 // ========== GET LIVE FIXTURES ONLY ==========
 exports.getLiveFixtures = async (req, res) => {
     try {
-        // Reuse the main logic but filter for live only
-        const [iptvChannels, pearlChannels] = await Promise.all([
-            fetchIPTVChannels(),
-            fetchPearlIPTVChannels()
-        ]);
+        const sphereChannels = await fetchSphereChannels();
 
         const parsedStreams = [];
-        for (const channel of iptvChannels) {
+        for (const channel of sphereChannels) {
             const parsed = parseTeamsFromChannel(channel.name);
             if (parsed) {
                 parsedStreams.push({
@@ -1053,7 +761,6 @@ exports.getLiveFixtures = async (req, res) => {
         });
 
         const liveFixtures = response.data?.response || [];
-
         const matchedFixtures = [];
         const usedFixtureIds = new Set();
 
@@ -1063,101 +770,11 @@ exports.getLiveFixtures = async (req, res) => {
             if (fixture && !usedFixtureIds.has(fixture.fixture.id)) {
                 usedFixtureIds.add(fixture.fixture.id);
 
-                matchedFixtures.push({
-                    id: fixture.fixture.id,
-                    date: fixture.fixture.date,
-                    timestamp: fixture.fixture.timestamp,
-                    status: {
-                        short: fixture.fixture.status.short,
-                        long: fixture.fixture.status.long,
-                        elapsed: fixture.fixture.status.elapsed
-                    },
-                    league: {
-                        id: fixture.league.id,
-                        name: fixture.league.name,
-                        country: fixture.league.country,
-                        logo: fixture.league.logo
-                    },
-                    teams: {
-                        home: {
-                            name: fixture.teams.home.name,
-                            logo: fixture.teams.home.logo
-                        },
-                        away: {
-                            name: fixture.teams.away.name,
-                            logo: fixture.teams.away.logo
-                        }
-                    },
-                    goals: {
-                        home: fixture.goals.home,
-                        away: fixture.goals.away
-                    },
-                    stream: {
-                        stream_id: stream.stream_id,
-                        channel_name: stream.channel_name,
-                        provider: 'sphere'
-                    }
-                });
-            }
-        }
-
-        // PearlIPTV fallback for live fixtures
-        const pearlSupportedOrCupLeaguesLive = new Set([
-            ...PEARL_SUPPORTED_LEAGUES,
-            ...Object.keys(CUP_TO_LEAGUE_MAP).map(Number)
-        ]);
-
-        for (const fixture of liveFixtures) {
-            if (usedFixtureIds.has(fixture.fixture.id)) continue;
-
-            // Skip leagues that Pearl doesn't support
-            if (!pearlSupportedOrCupLeaguesLive.has(fixture.league.id)) continue;
-
-            const pearlStream = findPearlStreamForFixture(fixture);
-            const pearlMatch = pearlStream || findPearlStreamByChannelMatch(
-                fixture.teams.home.name,
-                fixture.teams.away.name,
-                pearlChannels,
-                fixture.league.id
-            );
-
-            if (pearlMatch) {
-                usedFixtureIds.add(fixture.fixture.id);
-                matchedFixtures.push({
-                    id: fixture.fixture.id,
-                    date: fixture.fixture.date,
-                    timestamp: fixture.fixture.timestamp,
-                    status: {
-                        short: fixture.fixture.status.short,
-                        long: fixture.fixture.status.long,
-                        elapsed: fixture.fixture.status.elapsed
-                    },
-                    league: {
-                        id: fixture.league.id,
-                        name: fixture.league.name,
-                        country: fixture.league.country,
-                        logo: fixture.league.logo
-                    },
-                    teams: {
-                        home: {
-                            name: fixture.teams.home.name,
-                            logo: fixture.teams.home.logo
-                        },
-                        away: {
-                            name: fixture.teams.away.name,
-                            logo: fixture.teams.away.logo
-                        }
-                    },
-                    goals: {
-                        home: fixture.goals.home,
-                        away: fixture.goals.away
-                    },
-                    stream: {
-                        stream_id: pearlMatch.stream_id,
-                        channel_name: pearlMatch.channel_name,
-                        provider: 'pearl'
-                    }
-                });
+                matchedFixtures.push(buildFixtureResponse(fixture, {
+                    stream_id: stream.stream_id,
+                    channel_name: stream.channel_name,
+                    provider: 'sphere'
+                }));
             }
         }
 
@@ -1169,19 +786,16 @@ exports.getLiveFixtures = async (req, res) => {
 
     } catch (error) {
         console.error('Failed to fetch live fixtures:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 };
 
 // ========== DEBUG: GET IPTV CHANNELS ==========
 exports.getIPTVChannels = async (req, res) => {
     try {
-        const iptvChannels = await fetchIPTVChannels();
+        const sphereChannels = await fetchSphereChannels();
 
-        const parsed = iptvChannels.map(ch => {
+        const parsed = sphereChannels.map(ch => {
             const teams = parseTeamsFromChannel(ch.name);
             return {
                 stream_id: ch.stream_id,
@@ -1195,7 +809,7 @@ exports.getIPTVChannels = async (req, res) => {
 
         res.json({
             success: true,
-            total: iptvChannels.length,
+            total: sphereChannels.length,
             parsed_count: withTeams.length,
             unparsed_count: withoutTeams.length,
             parsed_streams: withTeams,
@@ -1220,28 +834,23 @@ exports.getFixtureById = async (req, res) => {
         });
 
         if (!response.data || !response.data.response || !response.data.response[0]) {
-            return res.status(404).json({
-                success: false,
-                error: 'Fixture not found'
-            });
+            return res.status(404).json({ success: false, error: 'Fixture not found' });
         }
 
         const fixture = response.data.response[0];
         const homeTeam = fixture.teams.home.name;
         const awayTeam = fixture.teams.away.name;
 
-        // Find matching stream from BOTH providers
-        const iptvChannels = await fetchIPTVChannels();
-        let sphereStream = null;
-        let pearlStream = null;
+        // Find matching Sphere stream
+        const sphereChannels = await fetchSphereChannels();
+        let matchedStream = null;
 
-        // 1. Search SphereIPTV (cat 171 USA Soccer channels)
-        for (const channel of iptvChannels) {
+        for (const channel of sphereChannels) {
             const parsed = parseTeamsFromChannel(channel.name);
             if (parsed) {
                 if ((teamsMatch(parsed.homeTeam, homeTeam) && teamsMatch(parsed.awayTeam, awayTeam)) ||
                     (teamsMatch(parsed.homeTeam, awayTeam) && teamsMatch(parsed.awayTeam, homeTeam))) {
-                    sphereStream = {
+                    matchedStream = {
                         stream_id: channel.stream_id,
                         channel_name: channel.name,
                         provider: 'sphere'
@@ -1250,30 +859,6 @@ exports.getFixtureById = async (req, res) => {
                 }
             }
         }
-
-        // 2. Search PearlIPTV
-        const fixtureLeagueId = fixture.league.id;
-        const isPearlSupported = PEARL_SUPPORTED_LEAGUES.has(fixtureLeagueId) ||
-            CUP_TO_LEAGUE_MAP[fixtureLeagueId] !== undefined;
-
-        if (isPearlSupported) {
-            const pearlDirect = findPearlStreamForFixture(fixture);
-            if (pearlDirect) {
-                pearlStream = pearlDirect;
-            } else {
-                const pearlChannels = await fetchPearlIPTVChannels();
-                const pearlChannelMatch = findPearlStreamByChannelMatch(homeTeam, awayTeam, pearlChannels, fixtureLeagueId);
-                if (pearlChannelMatch) {
-                    pearlStream = pearlChannelMatch;
-                }
-            }
-        }
-
-        // Pearl = primary, Sphere = alt (Pearl more reliable for big leagues)
-        const matchedStream = pearlStream || sphereStream || null;
-        const altStream = pearlStream && sphereStream ? sphereStream :
-            pearlStream ? null :
-                sphereStream ? null : null;
 
         res.json({
             success: true,
@@ -1311,16 +896,12 @@ exports.getFixtureById = async (req, res) => {
                     away: fixture.goals.away
                 },
                 score: fixture.score,
-                stream: matchedStream,
-                altStream: altStream
+                stream: matchedStream
             }
         });
 
     } catch (error) {
         console.error('Failed to fetch fixture:', error.message);
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+        res.status(500).json({ success: false, error: error.message });
     }
 };

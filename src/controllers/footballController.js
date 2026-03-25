@@ -5,21 +5,30 @@ const API_SPORTS_KEY = process.env.FOOTBALL_API_KEY;
 const API_SPORTS_URL = 'https://v3.football.api-sports.io';
 
 // ========================
-// IPTV PROVIDER CONFIGS
+// SPHERE IPTV CONFIG (Multi-Account Ready)
 // ========================
+const SPHERE_ACCOUNTS = [
+    {
+        server: process.env.IPTV_SERVER || 's.rocketdns.info',
+        port: process.env.IPTV_PORT || '8080',
+        user: process.env.IPTV_USER || '5986529',
+        pass: process.env.IPTV_PASS || '0044003',
+        protocol: process.env.IPTV_PROTOCOL || 'http',
+        label: 'sphere-1'
+    },
+    // Tambah akun baru di sini:
+    // {
+    //     server: process.env.IPTV_SERVER_2 || 's.rocketdns.info',
+    //     port: process.env.IPTV_PORT_2 || '8080',
+    //     user: process.env.IPTV_USER_2 || 'xxx',
+    //     pass: process.env.IPTV_PASS_2 || 'xxx',
+    //     protocol: process.env.IPTV_PROTOCOL_2 || 'http',
+    //     label: 'sphere-2'
+    // },
+];
 
-// SphereIPTV (updated credentials)
-const SPHERE_SERVER = process.env.IPTV_SERVER || 's.rocketdns.info';
-const SPHERE_PORT = process.env.IPTV_PORT || '8080';
-const SPHERE_USER = process.env.IPTV_USER || '5986529';
-const SPHERE_PASS = process.env.IPTV_PASS || '0044003';
-const SPHERE_PROTOCOL = process.env.IPTV_PROTOCOL || 'http';
-
-// PearlIPTV (updated credentials)
-const PEARL_SERVER = process.env.PEARL_SERVER || 'pearlhost2.one';
-const PEARL_USER = process.env.PEARL_USER || 'pearliptv669';
-const PEARL_PASS = process.env.PEARL_PASS || 'gwb66he3zc';
-const PEARL_PORT = process.env.PEARL_PORT || '80';
+// Primary account
+const PRIMARY = SPHERE_ACCOUNTS[0];
 
 // VPS Config
 const VPS_IP = process.env.VPS_IP || '173.249.27.15';
@@ -34,24 +43,7 @@ const SPHERE_FOOTBALL_CATEGORIES = [
     { id: '171', name: 'SPORTS - SOCCER', priority: 1 },
 ];
 
-// PearlIPTV Football Categories - per league
-// league_ids = array of league IDs this category covers (Pearl mixes UEFA comps together)
-const PEARL_FOOTBALL_CATEGORIES = [
-    { id: '1193', name: 'LA LIGA SPORT', league_id: 140, league_ids: [140, 143], priority: 1 },
-    { id: '1192', name: 'LEAGUES SERIE A', league_id: 135, league_ids: [135, 137], priority: 1 },
-    { id: '1936', name: 'SERIE A (US)', league_id: 135, league_ids: [135, 137], priority: 2 },
-    { id: '2281', name: 'BUNDESLIGA PPV', league_id: 78, league_ids: [78], priority: 1 },
-    { id: '1933', name: 'LIGUE PLUS', league_id: 61, league_ids: [61, 66], priority: 1 },
-    { id: '1796', name: 'DAZN LIGUE 1', league_id: 61, league_ids: [61, 66], priority: 2 },
-    { id: '1677', name: 'UEFA CHAMPIONS LEAGUE (UK)', league_id: 2, league_ids: [2, 3, 848], priority: 1 },  // Pearl mixes UCL+UEL+UECL here
-    { id: '2132', name: 'UEFA CHAMPIONS LEAGUE (CA)', league_id: 2, league_ids: [2, 3, 848], priority: 2 },
-    { id: '1678', name: 'UEFA EUROPA LEAGUE', league_id: 3, league_ids: [3, 2, 848], priority: 1 },           // Also has UCL+UECL channels
-    { id: '1932', name: 'SAUDI PRO LEAGUE', league_id: 307, league_ids: [307], priority: 1 },
-    { id: '1310', name: 'EPL PREMIER LEAGUE', league_id: 39, league_ids: [39, 45, 48], priority: 2 },
-    { id: '2084', name: 'WORLD FOOTBALL EVENTS', league_id: null, league_ids: [], priority: 3 },
-];
-
-// Sports TV Category (Category 122) - Premium Sports Channels (SphereIPTV)
+// Sports TV Category (Category 122) - Premium Sports Channels
 const SPORTS_TV_CATEGORY = '122';
 
 // Sports TV channels we want to feature for Football
@@ -97,70 +89,6 @@ const FOOTBALL_TV_CHANNELS = [
     { stream_id: 4445, name: 'TyC Sports', sport: 'football', league: 'Argentina' },
 ];
 
-// ========================
-// LEAGUE ROUTING
-// ========================
-
-// League → Provider routing (mana yang prioritas)
-// 'sphere' = SphereIPTV dulu, fallback PearlIPTV
-// 'pearl' = PearlIPTV dulu, fallback SphereIPTV
-const LEAGUE_PROVIDER = {
-    39: 'sphere',    // EPL - Sphere punya "vs" format
-    45: 'sphere',    // FA Cup
-    48: 'sphere',    // League Cup
-    253: 'sphere',   // MLS
-    262: 'sphere',   // Liga MX
-
-    // Pearl punya channel dedicated per liga:
-    140: 'pearl',    // La Liga
-    135: 'pearl',    // Serie A
-    78: 'pearl',     // Bundesliga
-    61: 'pearl',     // Ligue 1
-    2: 'pearl',      // Champions League
-    3: 'pearl',      // Europa League
-    848: 'pearl',    // Conference League
-    307: 'pearl',    // Saudi Pro League
-    143: 'pearl',    // Copa del Rey (pakai La Liga channels)
-    137: 'pearl',    // Coppa Italia (pakai Serie A channels)
-    529: 'sphere',   // Super Cup
-    531: 'sphere',   // UEFA Super Cup
-    94: 'sphere',    // Primeira Liga
-};
-
-// PearlIPTV Team → Stream ID mapping (La Liga)
-const PEARL_LA_LIGA_TEAMS = {
-    'alaves': 511016,
-    'almeria': 511015,
-    'athletic bilbao': 511014,
-    'athletic club': 511014,
-    'atletico madrid': 511013,
-    'atletico': 511013,
-    'barcelona': 511012,
-    'cadiz': 511011,
-    'celta vigo': 511010,
-    'celta': 511010,
-    'getafe': 511009,
-    'girona': 511008,
-    'granada': 511007,
-    'las palmas': 511006,
-    'mallorca': 511005,
-    'osasuna': 511004,
-    'rayo vallecano': 511003,
-    'rayo': 511003,
-    'real betis': 511002,
-    'betis': 511002,
-    'real madrid': 511001,
-    'real sociedad': 511000,
-    'sevilla': 510999,
-    'valencia': 510998,
-    'villarreal': 510997,
-    'villareal': 510997,
-    // Newly promoted / additional teams - tambahin di sini kalo ada
-    'espanyol': null,
-    'leganes': null,
-    'valladolid': null,
-};
-
 // Popular leagues to fetch (to limit API calls)
 const POPULAR_LEAGUES = [
     39,   // Premier League
@@ -196,7 +124,7 @@ const TEAM_ALIASES = {
     'atletico madrid': ['atletico', 'atlético madrid', 'atlético', 'atletico de madrid'],
     'real madrid': ['real madrid'],
     'barcelona': ['barca', 'barça'],
-    'bayern munich': ['bayern', 'bayern münchen', 'bayern munchen', 'leverkusen'],
+    'bayern munich': ['bayern', 'bayern münchen', 'bayern munchen'],
     'bayer leverkusen': ['leverkusen', 'bayer'],
     'borussia dortmund': ['dortmund', 'bvb'],
     'psg': ['paris saint germain', 'paris saint-germain', 'paris sg'],
@@ -236,26 +164,25 @@ const TEAM_ALIASES = {
 // Get all football matches with streams
 const getFootballMatches = async (req, res) => {
     try {
-        // Fetch fixtures, IPTV channels from both providers, and Sports TV channels in parallel
-        const [fixtures, sphereChannels, pearlChannels, sportsTVChannels] = await Promise.all([
+        // Fetch fixtures, Sphere channels, and Sports TV channels in parallel
+        const [fixtures, sphereChannels, sportsTVChannels] = await Promise.all([
             fetchFixtures(),
             fetchSphereIPTVChannels(),
-            fetchPearlIPTVChannels(),
             fetchSportsTVChannels()
         ]);
 
-        // Match fixtures with streams from BOTH providers
-        const matchedFixtures = matchFixturesWithStreams(fixtures, sphereChannels, pearlChannels);
+        // Match fixtures with Sphere streams
+        const matchedFixtures = matchFixturesWithStreams(fixtures, sphereChannels);
 
         // Separate by status
         const liveMatches = matchedFixtures.filter(m => m.status === 'LIVE');
         const upcomingMatches = matchedFixtures.filter(m => m.status === 'UPCOMING');
         const finishedMatches = matchedFixtures.filter(m => m.status === 'FINISHED');
 
-        // Get unmatched IPTV channels (SphereIPTV only - these have "vs" format)
+        // Get unmatched IPTV channels (channels with "vs" that didn't match any fixture)
         const matchedStreamIds = new Set(
             matchedFixtures
-                .filter(m => m.stream && m.stream.provider === 'sphere')
+                .filter(m => m.stream)
                 .map(m => m.stream.id)
         );
         const unmatchedChannels = sphereChannels
@@ -274,7 +201,6 @@ const getFootballMatches = async (req, res) => {
                 finished: finishedMatches.length,
                 withStreams: matchedFixtures.filter(m => m.stream).length,
                 sphereStreams: matchedFixtures.filter(m => m.stream?.provider === 'sphere').length,
-                pearlStreams: matchedFixtures.filter(m => m.stream?.provider === 'pearl').length,
                 sportsTVChannels: sportsTVChannels.length
             },
             matches: {
@@ -360,16 +286,17 @@ const fetchFixtures = async () => {
     }
 };
 
-// Fetch IPTV channels - SphereIPTV (existing logic, unchanged)
-const fetchSphereIPTVChannels = async () => {
+// Fetch IPTV channels - SphereIPTV
+const fetchSphereIPTVChannels = async (account) => {
+    const acc = account || PRIMARY;
     const allChannels = [];
 
     for (const category of SPHERE_FOOTBALL_CATEGORIES) {
         try {
-            const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}:${SPHERE_PORT}/player_api.php`, {
+            const response = await axios.get(`${acc.protocol}://${acc.server}:${acc.port}/player_api.php`, {
                 params: {
-                    username: SPHERE_USER,
-                    password: SPHERE_PASS,
+                    username: acc.user,
+                    password: acc.pass,
                     action: 'get_live_streams',
                     category_id: category.id
                 },
@@ -389,7 +316,7 @@ const fetchSphereIPTVChannels = async () => {
                 allChannels.push(...channels);
             }
         } catch (err) {
-            console.error(`Error fetching Sphere category ${category.id}:`, err.message);
+            console.error(`[Sphere/${acc.label}] Error fetching category ${category.id}:`, err.message);
         }
     }
 
@@ -402,59 +329,13 @@ const fetchSphereIPTVChannels = async () => {
     });
 };
 
-// Fetch IPTV channels - PearlIPTV (NEW)
-const fetchPearlIPTVChannels = async () => {
-    const allChannels = [];
-
-    for (const category of PEARL_FOOTBALL_CATEGORIES) {
-        try {
-            const response = await axios.get(`http://${PEARL_SERVER}:${PEARL_PORT}/player_api.php`, {
-                params: {
-                    username: PEARL_USER,
-                    password: PEARL_PASS,
-                    action: 'get_live_streams',
-                    category_id: category.id
-                },
-                timeout: 10000
-            });
-
-            if (response.data && Array.isArray(response.data)) {
-                const channels = response.data
-                    .filter(ch => !isExcludedChannel(ch.name))
-                    .filter(ch => !ch.name.includes('✦'))  // Skip all header rows
-                    .filter(ch => ch.name !== 'CA | No Event' && !ch.name.match(/no event/i)) // Skip placeholder channels
-                    .map(ch => ({
-                        id: ch.stream_id,
-                        name: ch.name,
-                        category: category.name,
-                        league_id: category.league_id,
-                        league_ids: category.league_ids || [],
-                        icon: ch.stream_icon || null,
-                        provider: 'pearl'
-                    }));
-                allChannels.push(...channels);
-            }
-        } catch (err) {
-            console.error(`Error fetching Pearl category ${category.id}:`, err.message);
-        }
-    }
-
-    // Remove duplicates
-    const seen = new Set();
-    return allChannels.filter(ch => {
-        if (seen.has(ch.id)) return false;
-        seen.add(ch.id);
-        return true;
-    });
-};
-
-// Fetch Sports TV channels from SphereIPTV Category 122 (unchanged)
+// Fetch Sports TV channels from SphereIPTV Category 122
 const fetchSportsTVChannels = async () => {
     try {
-        const response = await axios.get(`${SPHERE_PROTOCOL}://${SPHERE_SERVER}:${SPHERE_PORT}/player_api.php`, {
+        const response = await axios.get(`${PRIMARY.protocol}://${PRIMARY.server}:${PRIMARY.port}/player_api.php`, {
             params: {
-                username: SPHERE_USER,
-                password: SPHERE_PASS,
+                username: PRIMARY.user,
+                password: PRIMARY.pass,
                 action: 'get_live_streams',
                 category_id: SPORTS_TV_CATEGORY
             },
@@ -496,51 +377,25 @@ const fetchSportsTVChannels = async () => {
 // MATCHING LOGIC
 // ========================
 
-// Match fixtures with streams from BOTH providers
-const matchFixturesWithStreams = (fixtures, sphereChannels, pearlChannels) => {
+// Match fixtures with Sphere streams
+const matchFixturesWithStreams = (fixtures, sphereChannels) => {
     return fixtures.map(fixture => {
-        const stream = findBestStream(fixture, sphereChannels, pearlChannels);
+        const stream = findStream(fixture, sphereChannels);
         return {
             ...fixture,
             stream: stream ? {
                 id: stream.id,
                 name: stream.name,
                 category: stream.category,
-                provider: stream.provider // 'sphere' or 'pearl'
+                provider: 'sphere'
             } : null,
             hasStream: !!stream
         };
     });
 };
 
-// Find best stream for a fixture - checks both providers with priority
-const findBestStream = (fixture, sphereChannels, pearlChannels) => {
-    const leagueId = fixture.league.id;
-    const preferredProvider = LEAGUE_PROVIDER[leagueId] || 'sphere';
-
-    if (preferredProvider === 'pearl') {
-        // Try PearlIPTV first
-        const pearlStream = findPearlStream(fixture, pearlChannels);
-        if (pearlStream) return pearlStream;
-
-        // Fallback to SphereIPTV
-        const sphereStream = findSphereStream(fixture, sphereChannels);
-        if (sphereStream) return sphereStream;
-    } else {
-        // Try SphereIPTV first
-        const sphereStream = findSphereStream(fixture, sphereChannels);
-        if (sphereStream) return sphereStream;
-
-        // Fallback to PearlIPTV
-        const pearlStream = findPearlStream(fixture, pearlChannels);
-        if (pearlStream) return pearlStream;
-    }
-
-    return null;
-};
-
-// Find stream in SphereIPTV (existing logic - match by team names in channel name)
-const findSphereStream = (fixture, channels) => {
+// Find matching stream for a fixture
+const findStream = (fixture, channels) => {
     const homeTeam = normalizeTeamName(fixture.homeTeam.name);
     const awayTeam = normalizeTeamName(fixture.awayTeam.name);
     const homeAliases = getTeamAliases(homeTeam);
@@ -560,117 +415,6 @@ const findSphereStream = (fixture, channels) => {
     return null;
 };
 
-// Find stream in PearlIPTV (NEW - match by team name to stream ID)
-const findPearlStream = (fixture, channels) => {
-    const leagueId = fixture.league.id;
-
-    // La Liga OR Copa del Rey - use team-based mapping
-    if (leagueId === 140 || leagueId === 143) {
-        return findPearlLaLigaStream(fixture);
-    }
-
-    // Build set of all league IDs supported by Pearl (using league_ids arrays)
-    const supportedLeagueIds = new Set();
-    for (const cat of PEARL_FOOTBALL_CATEGORIES) {
-        if (cat.league_ids) {
-            cat.league_ids.forEach(id => supportedLeagueIds.add(id));
-        }
-        if (cat.league_id !== null) {
-            supportedLeagueIds.add(cat.league_id);
-        }
-    }
-
-    if (!supportedLeagueIds.has(leagueId)) {
-        return null; // This league isn't covered by Pearl
-    }
-
-    const homeTeam = normalizeTeamName(fixture.homeTeam.name);
-    const awayTeam = normalizeTeamName(fixture.awayTeam.name);
-    const homeAliases = getTeamAliases(homeTeam);
-    const awayAliases = getTeamAliases(awayTeam);
-
-    // Also add original team name (lowercase) as fallback for short/stripped names
-    const homeFallback = fixture.homeTeam.name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-    const awayFallback = fixture.awayTeam.name.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim();
-    if (homeFallback.length >= 4 && !homeAliases.includes(homeFallback)) homeAliases.push(homeFallback);
-    if (awayFallback.length >= 4 && !awayAliases.includes(awayFallback)) awayAliases.push(awayFallback);
-
-    // First pass: "vs" format channels (both teams match) - best quality match
-    for (const channel of channels) {
-        const channelName = channel.name.toLowerCase();
-        if (!channelName.includes('vs')) continue; // Skip non-match channels
-
-        const hasHome = homeAliases.some(alias => alias.length >= 3 && channelName.includes(alias));
-        const hasAway = awayAliases.some(alias => alias.length >= 3 && channelName.includes(alias));
-
-        if (hasHome && hasAway) {
-            return channel;
-        }
-    }
-
-    // Second pass: per-team channels from ANY category that covers this league
-    const relevantLeagueIds = new Set();
-    // Map cup competitions to their league counterpart for channel matching
-    const cupToLeague = {
-        137: 135,  // Coppa Italia → Serie A
-        66: 61,    // Coupe de France → Ligue 1
-    };
-    const targetLeagueId = cupToLeague[leagueId] || leagueId;
-    relevantLeagueIds.add(targetLeagueId);
-
-    for (const channel of channels) {
-        // Check if channel's category covers this league
-        const channelCoversLeague = channel.league_id === targetLeagueId ||
-            (channel.league_ids && channel.league_ids.includes(targetLeagueId));
-
-        if (!channelCoversLeague) continue;
-
-        const channelName = channel.name.toLowerCase();
-        const hasHome = homeAliases.some(alias => alias.length >= 3 && channelName.includes(alias));
-        const hasAway = awayAliases.some(alias => alias.length >= 3 && channelName.includes(alias));
-
-        if (hasHome || hasAway) {
-            return channel;
-        }
-    }
-
-    return null;
-};
-
-// Find La Liga stream from PearlIPTV using team mapping
-const findPearlLaLigaStream = (fixture) => {
-    const homeTeam = normalizeTeamName(fixture.homeTeam.name);
-    const awayTeam = normalizeTeamName(fixture.awayTeam.name);
-    const homeAliases = getTeamAliases(homeTeam);
-    const awayAliases = getTeamAliases(awayTeam);
-
-    // Try to find home team stream first (usually home team channel)
-    for (const alias of homeAliases) {
-        if (PEARL_LA_LIGA_TEAMS[alias] !== undefined && PEARL_LA_LIGA_TEAMS[alias] !== null) {
-            return {
-                id: PEARL_LA_LIGA_TEAMS[alias],
-                name: `LA LIGA - ${fixture.homeTeam.name}`,
-                category: 'LA LIGA SPORT',
-                provider: 'pearl'
-            };
-        }
-    }
-
-    // Try away team
-    for (const alias of awayAliases) {
-        if (PEARL_LA_LIGA_TEAMS[alias] !== undefined && PEARL_LA_LIGA_TEAMS[alias] !== null) {
-            return {
-                id: PEARL_LA_LIGA_TEAMS[alias],
-                name: `LA LIGA - ${fixture.awayTeam.name}`,
-                category: 'LA LIGA SPORT',
-                provider: 'pearl'
-            };
-        }
-    }
-
-    return null;
-};
-
 // ========================
 // HELPER FUNCTIONS
 // ========================
@@ -679,8 +423,6 @@ const findPearlLaLigaStream = (fixture) => {
 const normalizeTeamName = (name) => {
     return name
         .toLowerCase()
-        // Only strip prefixes/suffixes that are common club designators (word boundary)
-        // Don't strip 'sporting' when it's the main name (e.g. Sporting CP)
         .replace(/\b(fc|cf|sc|ac|as|ss|us|rc|cd|ud|rcd|sd|ca|ce)\b/gi, '')
         .replace(/\b(racing|deportivo|atletico|atlético)\b/gi, '')
         .replace(/[^a-z0-9\s]/g, '')
@@ -731,49 +473,34 @@ const mapStatus = (status) => {
 // STREAM INFO & URL BUILDER
 // ========================
 
-// Get single stream info - UPDATED to support both providers
+// Get single stream info
 const getStreamInfo = async (req, res) => {
     try {
         const { streamId } = req.params;
-        const provider = req.query.provider || 'sphere'; // default sphere
 
-        let streamUrl;
-        let channel = null;
+        // Always Sphere - proxy through VPS
+        const streamUrl = `${VPS_STREAM_BASE}/hls/sphere_${streamId}.m3u8`;
 
-        if (provider === 'pearl') {
-            // PearlIPTV - proxy through VPS
-            streamUrl = `${VPS_STREAM_BASE}/hls/pearl_${streamId}.m3u8`;
-
-            // Try to find channel info
-            const pearlChannels = await fetchPearlIPTVChannels();
-            channel = pearlChannels.find(ch => ch.id === parseInt(streamId));
-        } else {
-            // SphereIPTV - proxy through VPS
-            streamUrl = `${VPS_STREAM_BASE}/hls/sphere_${streamId}.m3u8`;
-
-            const [iptvChannels, sportsTVChannels] = await Promise.all([
-                fetchSphereIPTVChannels(),
-                fetchSportsTVChannels()
-            ]);
-            const allChannels = [...iptvChannels, ...sportsTVChannels];
-            channel = allChannels.find(ch => ch.id === parseInt(streamId));
-        }
+        const [iptvChannels, sportsTVChannels] = await Promise.all([
+            fetchSphereIPTVChannels(),
+            fetchSportsTVChannels()
+        ]);
+        const allChannels = [...iptvChannels, ...sportsTVChannels];
+        let channel = allChannels.find(ch => ch.id === parseInt(streamId));
 
         if (!channel) {
-            // Build basic channel info even if not found in list
             channel = {
                 id: parseInt(streamId),
                 name: `Stream ${streamId}`,
-                category: provider === 'pearl' ? 'PearlIPTV' : 'SphereIPTV',
+                category: 'SphereIPTV',
                 icon: null,
-                provider: provider
+                provider: 'sphere'
             };
         }
 
         // Try to find matching fixture
         const fixtures = await fetchFixtures();
         const match = findMatchingFixture(channel.name, fixtures);
-
         const parsedInfo = parseChannelName(channel.name);
 
         res.json({
@@ -786,7 +513,7 @@ const getStreamInfo = async (req, res) => {
                 icon: channel.icon,
                 league: channel.league || null,
                 type: channel.type || 'match',
-                provider: provider
+                provider: 'sphere'
             },
             match: match,
             parsedInfo: parsedInfo
@@ -838,17 +565,6 @@ const parseChannelName = (channelName) => {
         return { homeTeam, awayTeam, league, raw: channelName };
     }
 
-    // Try PearlIPTV format: "LA LIGA - Team Name"
-    const pearlMatch = channelName.match(/^(?:LA LIGA|SERIE A|BUNDESLIGA|LIGUE 1)\s*-\s*(.+)$/i);
-    if (pearlMatch) {
-        return {
-            homeTeam: pearlMatch[1].trim(),
-            awayTeam: null,
-            league: channelName.split('-')[0].trim(),
-            raw: channelName
-        };
-    }
-
     return { homeTeam: null, awayTeam: null, league: null, raw: channelName };
 };
 
@@ -889,12 +605,8 @@ const getFootballMatch = async (req, res) => {
             return res.status(404).json({ success: false, error: 'Match not found' });
         }
 
-        const [sphereChannels, pearlChannels] = await Promise.all([
-            fetchSphereIPTVChannels(),
-            fetchPearlIPTVChannels()
-        ]);
-
-        const stream = findBestStream(match, sphereChannels, pearlChannels);
+        const sphereChannels = await fetchSphereIPTVChannels();
+        const stream = findStream(match, sphereChannels);
 
         res.json({
             success: true,
@@ -904,7 +616,7 @@ const getFootballMatch = async (req, res) => {
                     id: stream.id,
                     name: stream.name,
                     category: stream.category,
-                    provider: stream.provider
+                    provider: 'sphere'
                 } : null
             }
         });
